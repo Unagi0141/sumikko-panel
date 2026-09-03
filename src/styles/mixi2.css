@@ -1,0 +1,66 @@
+/* ===========================================================================
+   mixi2 (mixi.social) 用の注入CSS
+   ---------------------------------------------------------------------------
+   アプリが先頭に次の変数を注入します（設定のつまみと連動）:
+     --tld-text-scale : 文字の倍率（1 = 等倍）
+     --tld-media-max  : 画像・動画の最大高さ（none で折りたたみ無効）
+
+   mixi2 の DOM 構造は公開仕様が無いため、一般的な形に賭けた指定です。
+   効かない場合はカラム設定の「開発者ツール」で実際の要素を確認して直してください。
+   =========================================================================== */
+
+/* --- 文字サイズ ----------------------------------------------------------
+   実測: mixi2 は rem 基準（html 10px / 本文 1.5rem = 15px）でした。
+   html の font-size を上げれば文字は比例して大きくなりますが、余白や幅も
+   rem なら一緒に膨らんでしまい「ブラウザの拡大」と変わらなくなります。
+   そこで X と同じく、本文要素だけを名指しして拡大します。
+   ------------------------------------------------------------------------ */
+
+article p,
+[role="article"] p,
+article [class*="text"],
+[role="article"] [class*="text"] {
+  font-size: calc(15px * var(--tld-text-scale, 1)) !important;
+  line-height: 1.55 !important;
+}
+
+/* 表示名・ID・時刻 */
+article time,
+[role="article"] time,
+article a[href^="/@"],
+[role="article"] a[href^="/@"] {
+  font-size: calc(13px * var(--tld-text-scale, 1)) !important;
+}
+
+/* --- 画像の折りたたみ ---------------------------------------------------- */
+
+article img,
+[role="article"] img,
+article video,
+[role="article"] video {
+  max-height: var(--tld-media-max, none) !important;
+  object-fit: cover;
+}
+
+/* アイコン用の除外は不要。max-height は「それより高い画像」にしか効かないので、
+   40px や 20px のアイコンは元から影響を受けない。
+   （実測: mixi2 の画像は全件が width/height 属性を持っていたため、
+     属性による除外を書くと全部の折りたたみが無効になってしまった） */
+
+[data-tld-expanded] {
+  max-height: none !important;
+}
+
+/* --- こまごまとした調整 -------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 138, 152, 0.5);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

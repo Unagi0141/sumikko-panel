@@ -1,0 +1,35 @@
+/* ===========================================================================
+   任意のWebページを表示するカラム用の注入CSS。
+   アプリが先頭に --tld-text-scale / --tld-media-max を注入します。
+   サイトごとに構造が違うので、既定では控えめな指定にとどめています。
+   =========================================================================== */
+
+article p,
+[role="article"] p,
+main p {
+  font-size: calc(15px * var(--tld-text-scale, 1)) !important;
+  line-height: 1.55 !important;
+}
+
+article img,
+[role="article"] img,
+main img {
+  max-height: var(--tld-media-max, none) !important;
+  object-fit: cover;
+}
+
+[data-tld-expanded] {
+  max-height: none !important;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 138, 152, 0.5);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

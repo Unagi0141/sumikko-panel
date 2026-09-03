@@ -1,0 +1,74 @@
+{
+  "name": "sumikko-panel",
+  "productName": "すみっこパネル",
+  "version": "0.9.0",
+  "private": true,
+  "description": "任意の Web ページを画面端のドックに常駐させる Windows アプリ",
+  "author": "kto28",
+  "license": "UNLICENSED",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "icon": "node tools/make-icon.js",
+    "shortcut": "node tools/make-shortcut.js",
+    "shortcut:remove": "node tools/make-shortcut.js --remove",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.kto28.sumikko-panel",
+    "productName": "すみっこパネル",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/*.ps1"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "SumikkoPanel-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "すみっこパネル",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Unagi0141",
+        "repo": "sumikko-panel"
+      }
+    ]
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unagi0141/sumikko-panel.git"
+  },
+  "homepage": "https://unagi0141.github.io/sumikko-panel/",
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  }
+}

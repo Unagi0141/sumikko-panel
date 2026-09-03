@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';" />
+    <title>すみっこパネル</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+      /* 自動的に隠しているときに画面端へ残す目印。ここにカーソルを寄せると戻る。 */
+      body {
+        background: linear-gradient(
+          to bottom,
+          rgba(96, 165, 250, 0) 0%,
+          rgba(96, 165, 250, 0.55) 12%,
+          rgba(96, 165, 250, 0.55) 88%,
+          rgba(96, 165, 250, 0) 100%
+        );
+      }
+    </style>
+  </head>
+  <body></body>
+</html>

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:;" />
+    <title>すみっこパネル</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header id="toolbar">
+      <div class="drag-handle" title="ドラッグで別のディスプレイへ移動できます">
+        <span class="grip"></span>
+      </div>
+      <div class="toolbar-actions">
+        <button id="btn-sound" class="icon-btn" title="新着音のオン / オフ">♪</button>
+        <button id="btn-reload-all" class="icon-btn" title="すべて再読み込み">⟳</button>
+        <button id="btn-settings" class="icon-btn" title="設定">⚙</button>
+        <button id="btn-hide" class="icon-btn" title="隠す（トレイアイコンで再表示）">－</button>
+      </div>
+    </header>
+
+    <main id="columns"></main>
+
+    <section id="settings" hidden>
+      <div class="settings-head">
+        <h1>設定</h1>
+        <button id="btn-close-settings" class="icon-btn" title="閉じる">✕</button>
+      </div>
+
+      <div class="settings-body">
+        <fieldset>
+          <legend>ドック</legend>
+
+          <label class="row">
+            <span>ディスプレイ</span>
+            <select id="set-display"></select>
+          </label>
+
+          <label class="row">
+            <span>配置</span>
+            <select id="set-edge">
+              <option value="right">画面の右端</option>
+              <option value="left">画面の左端</option>
+            </select>
+          </label>
+
+          <label class="row">
+            <span>カラムの並び</span>
+            <select id="set-layout">
+              <option value="row">横に並べる</option>
+              <option value="column">縦に積む</option>
+            </select>
+          </label>
+
+          <label class="row">
+            <span>幅</span>
+            <span class="inline">
+              <input id="set-width" type="range" min="200" max="1200" step="10" />
+              <output id="set-width-out"></output>
+            </span>
+          </label>
+
+          <label class="row checkbox">
+            <input id="set-compact" type="checkbox" />
+            <span>表示を詰める（文字と余白を小さく）</span>
+          </label>
+
+          <label class="row checkbox">
+            <input id="set-reserve" type="checkbox" />
+            <span>画面の領域を予約する（最大化した他ウインドウがこの手前で止まる）</span>
+          </label>
+
+          <label class="row checkbox">
+            <input id="set-fullscreen" type="checkbox" />
+            <span>全画面アプリが前面のときは隠す</span>
+          </label>
+
+          <label class="row checkbox">
+            <input id="set-ontop" type="checkbox" />
+            <span>常に最前面に表示する</span>
+          </label>
+
+          <label class="row checkbox">
+            <input id="set-autohide" type="checkbox" />
+            <span>マウスが離れたら自動的に隠す（画面端の帯で復帰）</span>
+          </label>
+
+          <label class="row" id="row-hidedelay">
+            <span>隠すまでの時間</span>
+            <span class="inline">
+              <input id="set-hidedelay" type="range" min="0" max="3000" step="100" />
+              <output id="set-hidedelay-out"></output>
+            </span>
+          </label>
+
+          <label class="row checkbox">
+            <input id="set-launch" type="checkbox" />
+            <span>Windows の起動時に開始する（トレイに常駐）</span>
+          </label>
+
+          <label class="row">
+            <span>表示切替のショートカット</span>
+            <span class="inline">
+              <input id="set-shortcut" type="text" spellcheck="false" placeholder="Alt+Shift+T" />
+              <span id="shortcut-status" class="hint"></span>
+            </span>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>新着の通知音</legend>
+
+          <label class="row checkbox">
+            <input id="set-sound" type="checkbox" />
+            <span>新しい投稿を検知したら音を鳴らす</span>
+          </label>
+
+          <label class="row">
+            <span>音量</span>
+            <span class="inline">
+              <input id="set-volume" type="range" min="0" max="100" step="5" />
+              <output id="set-volume-out"></output>
+              <button id="btn-test-sound" class="text-btn">試聴</button>
+            </span>
+          </label>
+
+          <label class="row">
+            <span>鳴らす間隔の下限</span>
+            <span class="inline">
+              <input id="set-sound-interval" type="range" min="0" max="30000" step="500" />
+              <output id="set-sound-interval-out"></output>
+            </span>
+          </label>
+
+          <p class="hint">
+            カラムごとのオン / オフは下の「カラム」で切り替えられます。
+            検知はページの DOM を見ているため、サービス側の作りが変わると効かなくなることがあります。
+          </p>
+        </fieldset>
+
+        <fieldset id="credentials-section">
+          <legend>ログイン情報</legend>
+          <p class="hint" id="credentials-note"></p>
+          <div id="credential-editor"></div>
+          <label class="row checkbox">
+            <input id="set-autofill" type="checkbox" />
+            <span>保存した ID / パスワードを入力欄に入れる（送信はしない）</span>
+          </label>
+
+          <p class="hint">
+            入力するだけで、<strong>ログインボタンは押しません</strong>。空の欄にだけ入れるので、
+            打ちかけの文字は消えません。送信は必ずご自分の操作になります。
+          </p>
+          <p class="hint warn">
+            送信まで自動で行う機能は<strong>取り止めました</strong>。実測の結果、mixi2 はメールの
+            認証コードが必須で完結せず、X はログインフローがエラーを返したためです。
+            手動で 1 度ログインすれば、セッションは長期間保持されます。
+          </p>
+          <div class="log-head">
+            <span>ログイン欄への入力の経過</span>
+            <button id="btn-clear-log" class="text-btn">消去</button>
+          </div>
+          <div id="login-log" class="log">まだ何も試していません。</div>
+        </fieldset>
+
+        <fieldset>
+          <legend>データの保存先</legend>
+          <p class="hint">
+            設定・ログイン情報・各サービスのログイン状態・注入 CSS を置く場所です。
+            変更するとアプリを再起動します。
+          </p>
+          <div class="card">
+            <div class="field">
+              <span>現在</span>
+              <input id="datadir-current" type="text" readonly />
+            </div>
+            <div class="button-row">
+              <button id="btn-datadir-choose" class="text-btn">フォルダを選ぶ…</button>
+              <button id="btn-datadir-default" class="text-btn">既定の場所に戻す</button>
+            </div>
+            <label class="row checkbox spaced">
+              <input id="datadir-move" type="checkbox" checked />
+              <span>今のデータを新しい場所へコピーする</span>
+            </label>
+            <p class="hint" id="datadir-note"></p>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>新着の流し込み</legend>
+          <p class="hint">
+            X が用意しているキー操作（ピリオド）を使って、待機中の新着を流し込みます。
+            再読み込みが起きないので、読みかけの位置もセッションも失いません。
+            <strong>先頭にいるときだけ</strong>動き、スクロール中や入力中は止まります。
+          </p>
+          <label class="row">
+            <span>流し込みの下限間隔</span>
+            <span class="inline">
+              <input id="set-live-interval" type="range" min="5000" max="120000" step="5000" />
+              <output id="set-live-interval-out"></output>
+            </span>
+          </label>
+          <label class="row">
+            <span>更新が途絶えたら再読み込み</span>
+            <span class="inline">
+              <input id="set-stale" type="range" min="0" max="180" step="10" />
+              <output id="set-stale-out"></output>
+            </span>
+          </label>
+          <p class="hint">
+            定期的な再読み込みはしません。ページは自前の接続で更新され続けるため、
+            むやみに読み直すと生きた接続と読みかけの位置を捨てることになります。
+            上の設定は「明らかに止まっているとき」だけの保険です。0 分で無効。
+          </p>
+        </fieldset>
+
+        <fieldset>
+          <legend>カラム</legend>
+          <div id="column-editor"></div>
+          <div class="add-row">
+            <select id="add-service">
+              <option value="x">X (Twitter)</option>
+              <option value="mixi2">mixi2</option>
+              <option value="web">その他のWeb</option>
+            </select>
+            <input id="add-url" type="text" spellcheck="false" placeholder="URL（空ならホーム）" />
+            <button id="btn-add-column" class="text-btn">カラムを追加</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>セッション / 見た目</legend>
+          <p class="hint">
+            各サービスはログイン状態を個別に保存します。ログアウトしたいときはセッションを消去してください。
+          </p>
+          <div class="button-row">
+            <button class="text-btn" data-clear="x">X のセッションを消去</button>
+            <button class="text-btn" data-clear="mixi2">mixi2 のセッションを消去</button>
+            <button class="text-btn" data-clear="web">その他のセッションを消去</button>
+          </div>
+          <p class="hint">
+            狭いカラム向けに各サービスへ CSS を注入しています。効かなくなったら CSS を
+            直して、カラムの ⟳ で再読み込みしてください。
+          </p>
+          <div class="button-row">
+            <button id="btn-open-styles" class="text-btn">CSS フォルダを開く</button>
+            <button id="btn-open-config" class="text-btn">設定ファイルの場所を開く</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>バージョンと更新</legend>
+          <div class="row">
+            <span>現在の版</span>
+            <span class="inline"><span id="app-version" class="status"></span></span>
+          </div>
+          <div class="row">
+            <span>更新</span>
+            <span class="inline">
+              <span id="update-status" class="status"></span>
+              <button id="btn-check-update" class="text-btn">確認</button>
+              <button id="btn-install-update" class="text-btn" hidden>再起動して適用</button>
+            </span>
+          </div>
+          <p class="hint">
+            更新は裏で受け取り、<strong>次にアプリを終了したときに適用</strong>されます。
+            作業中に勝手に再起動することはありません。
+          </p>
+        </fieldset>
+
+        <fieldset>
+          <legend>終了</legend>
+          <div class="button-row">
+            <button id="btn-quit" class="text-btn danger">アプリを終了</button>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <script src="app.js"></script>
+  </body>
+</html>

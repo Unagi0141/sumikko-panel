@@ -1,0 +1,1245 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>すみっこパネル — 画面の端に居座る Web パネル</title>
+    <meta
+      name="description"
+      content="任意の Web ページを画面端のドックに常駐させる Windows アプリ。タスクバーと同じ仕組みで画面領域を予約するので、最大化した他のウインドウが覆いかぶさりません。"
+    />
+    <link rel="icon" href="./icon-256.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@500;700&display=swap"
+    />
+
+    <style>
+      /* 配色はアプリ本体の画面から取っている
+         ドックの地 #0F1114 / 段 #171B21 / 罫 #262D38 / 青 #60A5FA */
+      :root {
+        --ground: #f3f5f9;
+        --surface: #ffffff;
+        --sunk: #e8ecf3;
+        --ink: #131722;
+        --ink-soft: #454e60;
+        --muted: #6b7486;
+        --line: #d9dfea;
+        --line-strong: #b6bfd0;
+        --accent: #1e4fc4;
+        --accent-ink: #ffffff;
+        --warn: #8a4b00;
+        --warn-bg: #fdf1de;
+        --good: #196b48;
+
+        --dock: #0f1114;
+        --dock-raised: #171b21;
+        --dock-line: #262d38;
+        --dock-col-a: #60a5fa;
+        --dock-col-b: #94a3b8;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --ground: #0d0f13;
+          --surface: #161a21;
+          --sunk: #11141a;
+          --ink: #e6eaf2;
+          --ink-soft: #b7c0cf;
+          --muted: #8d97a6;
+          --line: #262d38;
+          --line-strong: #3b4555;
+          --accent: #7cb0fb;
+          --accent-ink: #0b1220;
+          --warn: #eaa845;
+          --warn-bg: #2a2317;
+          --good: #5fc196;
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --ground: #0d0f13;
+        --surface: #161a21;
+        --sunk: #11141a;
+        --ink: #e6eaf2;
+        --ink-soft: #b7c0cf;
+        --muted: #8d97a6;
+        --line: #262d38;
+        --line-strong: #3b4555;
+        --accent: #7cb0fb;
+        --accent-ink: #0b1220;
+        --warn: #eaa845;
+        --warn-bg: #2a2317;
+        --good: #5fc196;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: "BIZ UDPGothic", "Yu Gothic UI", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+        line-height: 1.9;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        max-width: 62rem;
+        margin: 0 auto;
+        padding: 0 clamp(1.1rem, 4vw, 2.5rem);
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: "Zen Kaku Gothic New", "Yu Gothic UI", system-ui, sans-serif;
+        text-wrap: balance;
+        margin: 0;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      a {
+        color: var(--accent);
+        text-underline-offset: 0.2em;
+      }
+
+      a:focus-visible,
+      .dl:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 3px;
+      }
+
+      code {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 0.88em;
+        background: var(--sunk);
+        border: 1px solid var(--line);
+        border-radius: 3px;
+        padding: 0.12em 0.4em;
+      }
+
+      .eyebrow {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      /* ── ヘッダー ─────────────────────────────────── */
+
+      header.top {
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .top-in {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-top: 0.9rem;
+        padding-bottom: 0.9rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-family: "Zen Kaku Gothic New", sans-serif;
+        font-weight: 900;
+        letter-spacing: 0.01em;
+      }
+
+      /* ロゴは画像を持たず CSS で描く。ページ単体で完結させるため。 */
+      .brand .mark {
+        width: 26px;
+        height: 26px;
+        flex: none;
+        display: flex;
+        gap: 2px;
+        padding: 3px;
+        background: var(--dock);
+        border-radius: 6px;
+      }
+
+      .brand .mark i {
+        flex: 1;
+        border-radius: 2px;
+      }
+
+      .brand .mark i:first-child {
+        background: var(--dock-col-a);
+      }
+
+      .brand .mark i:last-child {
+        background: var(--dock-col-b);
+      }
+
+      .top-links {
+        display: flex;
+        gap: 1.1rem;
+        font-size: 0.9rem;
+      }
+
+      /* ── ヒーロー ─────────────────────────────────── */
+
+      .hero {
+        display: grid;
+        gap: clamp(2rem, 5vw, 3.5rem);
+        padding: clamp(3rem, 8vw, 5.5rem) 0 clamp(2.5rem, 6vw, 4rem);
+        align-items: center;
+      }
+
+      @media (min-width: 60rem) {
+        .hero {
+          grid-template-columns: 1.05fr 1fr;
+        }
+      }
+
+      .hero h1 {
+        font-weight: 900;
+        font-size: clamp(1.9rem, 4.6vw, 3rem);
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        /* 日本語は単語の切れ目が無いので、任せると行末に「る。」だけ残る。
+           文節で折らせる（未対応のブラウザでは通常の折り返しに戻るだけ）。 */
+        word-break: auto-phrase;
+      }
+
+      .hero-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 1.3rem;
+      }
+
+      .hero p.sub {
+        font-size: 1.06rem;
+        color: var(--ink-soft);
+        max-width: 34em;
+      }
+
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.9rem;
+      }
+
+      .dl {
+        display: inline-flex;
+        flex-direction: column;
+        gap: 0.1rem;
+        padding: 0.75rem 1.5rem;
+        background: var(--accent);
+        color: var(--accent-ink);
+        border-radius: 6px;
+        text-decoration: none;
+        font-family: "Zen Kaku Gothic New", sans-serif;
+        font-weight: 700;
+        line-height: 1.4;
+      }
+
+      .dl small {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.72rem;
+        font-weight: 500;
+        opacity: 0.85;
+      }
+
+      .cta .meta {
+        font-size: 0.85rem;
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      /* ── 画面端の予約を図で示す ────────────────────── */
+
+      figure.diagram {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.7rem;
+      }
+
+      .screen {
+        position: relative;
+        display: flex;
+        aspect-ratio: 16 / 10;
+        background: linear-gradient(160deg, #2b3a52, #16202f);
+        border: 1px solid var(--line-strong);
+        border-radius: 8px;
+        padding: 7px;
+        gap: 5px;
+        overflow: hidden;
+      }
+
+      /* 最大化したウインドウ。ドックの手前で止まる */
+      .win {
+        flex: 1;
+        min-width: 0;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .win-bar {
+        height: 16px;
+        background: var(--sunk);
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        padding: 0 5px;
+        flex: none;
+      }
+
+      .win-bar i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--line-strong);
+      }
+
+      .win-body {
+        flex: 1;
+        padding: 9px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .win-body span {
+        height: 5px;
+        border-radius: 2px;
+        background: var(--line);
+      }
+
+      .win-body span:nth-child(1) {
+        width: 62%;
+      }
+      .win-body span:nth-child(2) {
+        width: 88%;
+      }
+      .win-body span:nth-child(3) {
+        width: 74%;
+      }
+      .win-body span:nth-child(4) {
+        width: 45%;
+      }
+
+      /* ドック本体 */
+      .dock {
+        flex: none;
+        width: 27%;
+        background: var(--dock);
+        border: 1px solid var(--dock-line);
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .dock-bar {
+        height: 14px;
+        background: var(--dock-raised);
+        border-bottom: 1px solid var(--dock-line);
+        flex: none;
+      }
+
+      .dock-cols {
+        flex: 1;
+        display: flex;
+        gap: 4px;
+        padding: 5px;
+      }
+
+      .dock-cols > div {
+        flex: 1;
+        border-radius: 3px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 4px;
+      }
+
+      .dock-cols > div:first-child {
+        background: color-mix(in srgb, var(--dock-col-a) 22%, transparent);
+      }
+
+      .dock-cols > div:last-child {
+        background: color-mix(in srgb, var(--dock-col-b) 20%, transparent);
+      }
+
+      .dock-cols i {
+        display: block;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.32);
+      }
+
+      .dock-cols i:nth-child(even) {
+        width: 70%;
+      }
+
+      /* 境界を示す線 */
+      .boundary {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: calc(27% + 7px + 5px);
+        width: 0;
+        border-left: 2px dashed var(--dock-col-a);
+        opacity: 0.9;
+      }
+
+      figcaption {
+        font-size: 0.86rem;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+
+      /* ── 表示例のモックアップ ──────────────────────
+         実画面のスクリーンショットは使っていません。他人の投稿が写り込むためです。
+         ここはドックの見え方を CSS で組んだもので、内容はすべて架空です。
+         各サービスのロゴや固有の意匠は使っていません。 */
+
+      figure.shot {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        align-items: center;
+      }
+
+      .dockui {
+        width: min(560px, 100%);
+        background: var(--dock);
+        border: 1px solid var(--dock-line);
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        font-family: "Yu Gothic UI", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
+        box-shadow: 0 18px 40px -24px rgba(6, 10, 20, 0.75);
+      }
+
+      .dockui-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 24px;
+        padding: 0 6px;
+        background: var(--dock-raised);
+        border-bottom: 1px solid var(--dock-line);
+        flex: none;
+      }
+
+      .dockui-bar .grip {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        background-image: radial-gradient(circle, #8d97a6 1px, transparent 1px);
+        background-size: 4px 4px;
+        opacity: 0.75;
+      }
+
+      .dockui-btns {
+        display: flex;
+        gap: 6px;
+      }
+
+      .dockui-btns i {
+        width: 9px;
+        height: 9px;
+        border-radius: 2px;
+        background: #3a4454;
+      }
+
+      .dockui-cols {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+      }
+
+      .dcol {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .dcol-head {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        height: 20px;
+        padding: 0 5px;
+        background: var(--dock-raised);
+        border-bottom: 1px solid var(--dock-line);
+        flex: none;
+      }
+
+      .dcol-name {
+        font-size: 10px;
+        font-weight: 700;
+        color: #e6eaf0;
+        letter-spacing: 0.02em;
+      }
+
+      .dcol-badge {
+        min-width: 15px;
+        padding: 0 4px;
+        border-radius: 7px;
+        background: var(--dock-col-a);
+        color: #0b1220;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9px;
+        font-weight: 700;
+        line-height: 14px;
+        text-align: center;
+      }
+
+      .dcol-body {
+        background: #15181c;
+        padding: 3px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .post {
+        display: flex;
+        gap: 6px;
+        padding: 7px 6px;
+        background: #1a1e24;
+        border-radius: 4px;
+      }
+
+      .av {
+        width: 20px;
+        height: 20px;
+        flex: none;
+        border-radius: 50%;
+      }
+
+      .av[data-c="1"] { background: linear-gradient(140deg, #7dd3fc, #3b82f6); }
+      .av[data-c="2"] { background: linear-gradient(140deg, #fca5a5, #ef4444); }
+      .av[data-c="3"] { background: linear-gradient(140deg, #86efac, #16a34a); }
+      .av[data-c="4"] { background: linear-gradient(140deg, #fde68a, #f59e0b); }
+      .av[data-c="5"] { background: linear-gradient(140deg, #f9a8d4, #ec4899); }
+      .av[data-c="6"] { background: linear-gradient(140deg, #c4b5fd, #8b5cf6); }
+      .av[data-c="7"] { background: linear-gradient(140deg, #99f6e4, #14b8a6); }
+      .av[data-c="8"] { background: linear-gradient(140deg, #bfdbfe, #64748b); }
+
+      .pbody {
+        min-width: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .pmeta {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .pmeta b {
+        font-size: 11px;
+        color: #e6eaf0;
+        white-space: nowrap;
+      }
+
+      .pmeta span {
+        font-size: 10px;
+        color: #8d97a6;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* 本文だけ大きい、というのがこのアプリの肝なので、そこを再現する */
+      .pbody p {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #dfe4ec;
+        word-break: break-all;
+      }
+
+      /* 折りたたまれた画像。高さを詰めてあることが分かるようにする */
+      .pshot {
+        height: 34px;
+        border-radius: 3px;
+        background: linear-gradient(120deg, #334155, #1e293b 60%, #475569);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .pshot::after {
+        content: "";
+        position: absolute;
+        inset: auto 0 0 0;
+        height: 10px;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.45), transparent);
+      }
+
+      .pacts {
+        display: flex;
+        gap: 14px;
+        padding-top: 1px;
+      }
+
+      .pacts i {
+        width: 9px;
+        height: 9px;
+        border: 1.2px solid #55606f;
+        border-radius: 2px;
+      }
+
+      .pacts i:first-child {
+        border-radius: 50% 50% 50% 2px;
+      }
+
+
+      /* ── ダミーの写真とアバター ────────────────────
+         著作権の問題を避けるため、写真は一切使わず CSS のグラデーションで描いている。
+         小さく表示されるので、空・稜線・地面の三層があれば風景として読める。 */
+
+      .av {
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* 人物アイコン。頭と肩のシルエットを重ねて「顔写真」に見せる */
+      .av::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 18%;
+        width: 38%;
+        height: 38%;
+        transform: translateX(-50%);
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.82);
+      }
+
+      .av::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: -22%;
+        width: 74%;
+        height: 52%;
+        transform: translateX(-50%);
+        border-radius: 50% 50% 0 0;
+        background: rgba(255, 255, 255, 0.82);
+      }
+
+      /* 畳まれた画像。空・山・水面の三層で写真らしく見せる */
+      .pshot {
+        height: 44px;
+        border-radius: 3px;
+        position: relative;
+        overflow: hidden;
+        cursor: zoom-in;
+      }
+
+      /* 夕暮れの山 */
+      .pshot[data-scene="hill"] {
+        background: linear-gradient(#f7b267 0%, #f4845f 38%, #c75f6b 62%, #6a4a6b 100%);
+      }
+
+      .pshot[data-scene="hill"]::before {
+        content: "";
+        position: absolute;
+        inset: 30% 0 0 0;
+        background: #4a3a52;
+        clip-path: polygon(0 55%, 18% 22%, 34% 52%, 52% 12%, 72% 48%, 88% 28%, 100% 50%, 100% 100%, 0 100%);
+      }
+
+      .pshot[data-scene="hill"]::after {
+        content: "";
+        position: absolute;
+        left: 74%;
+        top: 12%;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #ffe9b0;
+        box-shadow: 0 0 12px 4px rgba(255, 225, 150, 0.55);
+      }
+
+      /* 木のテーブルに置いたコーヒーを真上から見たところ。
+         小さく写るので、輪郭のはっきりした丸いものが分かりやすい。 */
+      .pshot[data-scene="cafe"] {
+        background:
+          repeating-linear-gradient(
+            92deg,
+            rgba(0, 0, 0, 0.06) 0 6px,
+            rgba(255, 255, 255, 0.04) 6px 13px
+          ),
+          linear-gradient(160deg, #a97c50, #7b5636 70%, #5d4029);
+      }
+
+      /* 受け皿とカップ */
+      .pshot[data-scene="cafe"]::before {
+        content: "";
+        position: absolute;
+        left: 26%;
+        top: 50%;
+        width: 30px;
+        height: 30px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: #efe7dc;
+        box-shadow: 0 3px 6px rgba(20, 12, 6, 0.45);
+      }
+
+      /* コーヒーの面 */
+      .pshot[data-scene="cafe"]::after {
+        content: "";
+        position: absolute;
+        left: 26%;
+        top: 50%;
+        width: 18px;
+        height: 18px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background: radial-gradient(circle at 38% 34%, #b98756 0 32%, #6b4426 62%, #462814 100%);
+      }
+
+      /* 畳まれていることを示す小さな印 */
+      .pshot span.more {
+        position: absolute;
+        right: 4px;
+        bottom: 3px;
+        padding: 0 4px;
+        border-radius: 3px;
+        background: rgba(10, 14, 20, 0.66);
+        color: #e6eaf0;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 8px;
+        line-height: 12px;
+        letter-spacing: 0.02em;
+      }
+
+      /* ── 一般セクション ───────────────────────────── */
+
+      section {
+        padding: clamp(2.5rem, 6vw, 4rem) 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .sec-head {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .sec-head h2 {
+        font-weight: 900;
+        font-size: clamp(1.5rem, 3.4vw, 2rem);
+        line-height: 1.4;
+      }
+
+      .sec-head p {
+        color: var(--ink-soft);
+        max-width: 42em;
+      }
+
+      .grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 1fr;
+      }
+
+      @media (min-width: 44rem) {
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 1.3rem 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+      }
+
+      .card h3 {
+        font-weight: 700;
+        font-size: 1.06rem;
+        line-height: 1.6;
+      }
+
+      .card p {
+        font-size: 0.95rem;
+        color: var(--ink-soft);
+      }
+
+      /* ── 注意書き ─────────────────────────────────── */
+
+      .notice {
+        background: var(--warn-bg);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--warn);
+        border-radius: 5px;
+        padding: 1.2rem 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.7rem;
+      }
+
+      .notice .eyebrow {
+        color: var(--warn);
+      }
+
+      .notice p {
+        font-size: 0.95rem;
+      }
+
+      ol.steps {
+        margin: 0;
+        padding-left: 1.3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        font-size: 0.95rem;
+      }
+
+      ul.plain {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      ul.plain li {
+        position: relative;
+        padding-left: 1.4rem;
+        font-size: 0.95rem;
+        color: var(--ink-soft);
+      }
+
+      ul.plain li::before {
+        content: "";
+        position: absolute;
+        left: 0.3rem;
+        top: 0.85em;
+        width: 0.4rem;
+        height: 0.4rem;
+        border-radius: 50%;
+        background: var(--line-strong);
+      }
+
+      .spec {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.5rem 1.5rem;
+        font-size: 0.95rem;
+      }
+
+      .spec dt {
+        color: var(--muted);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        white-space: nowrap;
+      }
+
+      .spec dd {
+        margin: 0;
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 2.5rem 0 4rem;
+        color: var(--muted);
+        font-size: 0.87rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="top">
+      <div class="wrap top-in">
+        <div class="brand">
+          <span class="mark" aria-hidden="true"><i></i><i></i></span>
+          <span>すみっこパネル</span>
+        </div>
+        <nav class="top-links">
+          <a href="#features">できること</a>
+          <a href="#download">ダウンロード</a>
+          <a href="https://github.com/Unagi0141/sumikko-panel">ソース</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Windows / 無料 / ベータ</p>
+          <h1>画面の端を、ちゃんと空けてくれる。</h1>
+          <p class="sub">
+            見ていたい Web ページを画面端に置きっぱなしにする常駐アプリ。
+            タスクバーと同じ仕組みで<strong>画面の領域そのものを予約する</strong>ので、
+            他のアプリを最大化してもドックに覆いかぶさりません。
+          </p>
+          <div class="cta">
+            <a class="dl" href="https://github.com/Unagi0141/sumikko-panel/releases/latest">
+              ダウンロード
+              <small>Windows 10 / 11 · 64bit</small>
+            </a>
+            <span class="meta">v0.9.0 ベータ · 約 110 MB</span>
+          </div>
+        </div>
+
+        <figure class="diagram">
+          <div class="screen" role="img" aria-label="デスクトップの模式図。最大化したウインドウが、右端のドックの手前で止まっている">
+            <div class="win">
+              <div class="win-bar"><i></i><i></i><i></i></div>
+              <div class="win-body"><span></span><span></span><span></span><span></span></div>
+            </div>
+            <div class="dock">
+              <div class="dock-bar"></div>
+              <div class="dock-cols">
+                <div><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <div><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+            </div>
+            <div class="boundary"></div>
+          </div>
+          <figcaption>
+            最大化したウインドウは破線のところで止まります。ドックが上に浮いているのではなく、
+            <strong>作業領域そのものが狭くなっている</strong>ためです。
+          </figcaption>
+        </figure>
+      </div>
+
+      <!-- ─────────────────────────────────────────── -->
+      <section id="features">
+        <div class="wrap">
+          <div class="sec-head">
+            <p class="eyebrow">できること</p>
+            <h2>置いておくための道具です</h2>
+            <p>
+              一日じゅう出しっぱなしにしても邪魔にならないことを目標に作っています。
+              細いカラムで読めること、他の作業を妨げないこと、勝手に静かになること。
+            </p>
+          </div>
+
+          <div class="grid">
+            <div class="card">
+              <h3>画面の領域を予約する</h3>
+              <p>
+                Windows の AppBar として登録するので、最大化したウインドウがドックの手前で止まります。
+                「常に最前面」で無理やり浮かせる方式とは違い、他のアプリの邪魔をしません。
+              </p>
+            </div>
+
+            <div class="card">
+              <h3>全画面アプリのときは引っ込む</h3>
+              <p>
+                ゲームや動画が全画面になったことを検知して、自動的に隠れます。戻れば また出てきます。
+              </p>
+            </div>
+
+            <div class="card">
+              <h3>文字だけ大きくする</h3>
+              <p>
+                ブラウザの拡大と違い、本文の文字サイズだけを上げます。余白も画像も膨らまないので、
+                細いカラムのまま読みやすくできます。画像は畳んでおいて、クリックで開けます。
+              </p>
+            </div>
+
+            <div class="card">
+              <h3>新着を知らせる・流し込む</h3>
+              <p>
+                新しい投稿を検知すると短い音とバッジで知らせます。先頭を見ているときは、
+                待機中の新着を再読み込みなしで流し込みます。読んでいる最中は止まります。
+              </p>
+            </div>
+
+            <div class="card">
+              <h3>好きなページを並べられる</h3>
+              <p>
+                URL を指定すれば何でも置けます。カラムは横にも縦にも並べられ、
+                幅はドラッグで変えられます。サービスごとにログイン状態は別々に保たれます。
+              </p>
+            </div>
+
+            <div class="card">
+              <h3>設定ファイルで拡張できる</h3>
+              <p>
+                対応サービスは JSON で定義されています。1 項目足せば増やせるので、
+                アプリの更新を待たずに自分で対応させられます。見た目も CSS で調整できます。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ─────────────────────────────────────────── -->
+      <section id="look">
+        <div class="wrap">
+          <div class="sec-head">
+            <p class="eyebrow">表示例</p>
+            <h2>細くても、ちゃんと読めます</h2>
+            <p>
+              幅 560px にカラムを 2 本並べた状態です。本文だけを拡大しているので、
+              この幅でも文字が潰れません。画像は畳んであり、クリックで開きます。
+            </p>
+          </div>
+
+          <!-- 実際の画面ではなく、見え方を示すための作りものです。
+               表示している内容はすべて架空のものです。 -->
+          <figure class="shot">
+            <div class="dockui" role="img" aria-label="ドックの表示例。2 本のカラムに投稿が並んでいる">
+              <div class="dockui-bar">
+                <span class="grip"></span>
+                <span class="dockui-btns"><i></i><i></i><i></i><i></i></span>
+              </div>
+
+              <div class="dockui-cols">
+                <!-- 左のカラム -->
+                <div class="dcol">
+                  <div class="dcol-head">
+                    <span class="dcol-name">X</span>
+                    <span class="dcol-badge">3</span>
+                  </div>
+                  <div class="dcol-body">
+                    <article class="post">
+                      <span class="av" data-c="1"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>あおい</b><span>@aoi_works · 2分</span></div>
+                        <p>新しい配列のキーボードに替えて三日目。まだ小指が迷子になる。慣れる気配はあるので、もう少し粘ってみる。</p>
+                        <div class="pacts"><i></i><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+
+                    <article class="post">
+                      <span class="av" data-c="2"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>みなと</b><span>@minato_pm · 14分</span></div>
+                        <p>資料を作り直していたら、そもそも会議が要らないことに気づいてしまった。</p>
+                        <div class="pshot" data-scene="hill"><span class="more">タップで開く</span></div>
+                        <div class="pacts"><i></i><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+
+                    <article class="post">
+                      <span class="av" data-c="3"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>さくら</b><span>@sakura_dev · 31分</span></div>
+                        <p>ビルドが 8 分から 40 秒になった。キャッシュの設定を一行直しただけ。</p>
+                        <div class="pacts"><i></i><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+
+                    <article class="post">
+                      <span class="av" data-c="4"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>とおる</b><span>@toru_cam · 1時間</span></div>
+                        <p>朝の光がよかったので遠回りして帰った。</p>
+                        <div class="pacts"><i></i><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+
+                <!-- 右のカラム -->
+                <div class="dcol">
+                  <div class="dcol-head">
+                    <span class="dcol-name">mixi2</span>
+                  </div>
+                  <div class="dcol-body">
+                    <article class="post">
+                      <span class="av" data-c="5"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>ひなた</b><span>@hinata · 5分</span></div>
+                        <p>棚を組み立て始めて 5 時間。まだ 2/3 くらいの気持ち。</p>
+                        <div class="pacts"><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+
+                    <article class="post">
+                      <span class="av" data-c="6"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>かえで</b><span>@kaede_ · 22分</span></div>
+                        <p>近所に新しくできた店、コーヒーがやたら美味しかったのでまた行く。</p>
+                        <div class="pshot" data-scene="cafe"><span class="more">タップで開く</span></div>
+                        <div class="pacts"><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+
+                    <article class="post">
+                      <span class="av" data-c="7"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>りく</b><span>@riku_ · 2時間</span></div>
+                        <p>積んでいた本をやっと開いた。最初の 10 ページで面白いと分かる本は、だいたい最後まで面白い。</p>
+                        <div class="pacts"><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+
+                    <article class="post">
+                      <span class="av" data-c="8"></span>
+                      <div class="pbody">
+                        <div class="pmeta"><b>ひなた</b><span>@hinata · 昨日</span></div>
+                        <p>結局いちばん使うのは、いちばん地味な道具だったりする。</p>
+                        <div class="pacts"><i></i><i></i><i></i></div>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <figcaption>
+              表示イメージです。投稿の内容・氏名はすべて架空のもので、実在のものとは関係ありません。
+              各サービスの名称は、それぞれの権利者に帰属します。
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────── -->
+      <section id="download">
+        <div class="wrap">
+          <div class="sec-head">
+            <p class="eyebrow">ダウンロード</p>
+            <h2>入れる前に読んでください</h2>
+          </div>
+
+          <div class="grid" style="grid-template-columns: 1fr">
+            <div class="notice">
+              <span class="eyebrow">警告が出ます</span>
+              <p>
+                このアプリには<strong>コード署名を付けていません</strong>。
+                署名の証明書は個人が継続的に持つには高く、無料で配るアプリには見合わないためです。
+                そのため初回の起動時に Windows SmartScreen の警告が出ます。隠さずに書いておきます。
+              </p>
+              <ol class="steps">
+                <li>「WindowsによってPCが保護されました」と出る</li>
+                <li><strong>詳細情報</strong> をクリック</li>
+                <li><strong>実行</strong> をクリック</li>
+              </ol>
+              <p>
+                内容が気になる場合は、<a href="https://github.com/Unagi0141/sumikko-panel">ソースコード</a>を読んでから判断してください。全部公開しています。
+              </p>
+            </div>
+
+            <div class="card">
+              <h3>何も送信しません</h3>
+              <p>
+                利用状況の収集も、外部への送信も一切ありません。設定も、各サービスのログイン状態も、
+                すべてお使いの PC の中だけに保存されます。保存先は設定から変更できます。
+              </p>
+              <p>
+                各サービスへの通信は、そのサービスの Web ページを表示するためのものだけです。
+                アプリを削除したい場合は、アンインストール後に
+                <code>%APPDATA%\Sumikko Panel</code> を削除してください。
+              </p>
+            </div>
+
+            <div class="notice">
+              <span class="eyebrow">まだベータです</span>
+              <p>
+                作者の環境でしか動作を確認していません。他の PC、別の画面解像度、
+                シングルモニタでの動きは未検証です。<strong>不具合が残っている前提</strong>で
+                お使いください。おかしなところがあれば報告していただけると助かります。
+              </p>
+              <p>
+                更新は自動で受け取り、次にアプリを終了したときに適用されます。
+              </p>
+            </div>
+
+            <div class="card">
+              <h3>動作環境</h3>
+              <dl class="spec">
+                <dt>OS</dt>
+                <dd>Windows 10 / 11（64bit）</dd>
+                <dt>権限</dt>
+                <dd>管理者権限は不要（ユーザー単位でインストール）</dd>
+                <dt>サイズ</dt>
+                <dd>約 110 MB（表示エンジンを同梱するため）</dd>
+                <dt>ライセンス</dt>
+                <dd>個人・法人を問わず無料で使えます。再配布と改変は許可していません。</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────────────────────────────────────── -->
+      <section>
+        <div class="wrap">
+          <div class="sec-head">
+            <p class="eyebrow">補足</p>
+            <h2>できないこと</h2>
+            <p>先に知っておいたほうが、がっかりしなくて済むと思うので書いておきます。</p>
+          </div>
+          <ul class="plain">
+            <li>
+              各サービスの <strong>API は使っていません</strong>。Web ページをそのまま表示しているので、
+              サービス側の作りが変わると、文字サイズの調整や新着の検知が効かなくなることがあります。
+              その場合は設定から CSS と定義を直せます。
+            </li>
+            <li>
+              <strong>ログイン情報は保存しません。</strong>各カラムの中で 1 度ログインしてください。
+              ログイン状態はそのまま保たれます。
+            </li>
+            <li>
+              <strong>Windows 専用です。</strong>画面領域の予約と全画面の検知が Windows の機能に依存しています。
+            </li>
+            <li>
+              <strong>軽くはありません。</strong>カラムごとに表示エンジンを抱えるので、2 カラムで数百 MB 使います。
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <p>すみっこパネル — 画面の端に居座る Web パネル</p>
+        <p>
+          本ソフトの利用によって生じた損害について、作者は責任を負いません。
+          各サービスのご利用にあたっては、それぞれの利用規約に従ってください。
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

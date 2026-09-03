@@ -1,0 +1,15 @@
+# 改行コードの扱いを固定する。
+# これが無いと、環境によって差分が「全行変更」になったり警告が出たりする。
+
+# 既定: リポジトリ内は LF で持ち、チェックアウト時は環境に合わせる
+* text=auto
+
+# PowerShell ヘルパーは Windows 専用なので CRLF で取り出す。
+# なお UTF-8 BOM は Git が保持するので消えない（BOM が無いと
+# Windows PowerShell 5.1 が日本語コメントを誤読して構文エラーになる）。
+*.ps1 text eol=crlf
+
+# バイナリは一切触らせない
+*.png binary
+*.ico binary
+*.exe binary

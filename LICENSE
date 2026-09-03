@@ -1,0 +1,78 @@
+すみっこパネル (Sumikko Panel) — 使用許諾条件
+Copyright (c) 2026 kto28. All rights reserved.
+
+このソフトウェアはソースコードを公開していますが、オープンソースソフトウェア
+ではありません。以下の条件で許諾します。
+
+■ 許可すること
+
+1. 個人・法人を問わず、無償で使用できます。用途や台数の制限はありません。
+2. ソースコードを閲覧し、内容を検証できます。
+3. 自分が使用する目的に限り、手元でソースコードを変更してビルドできます。
+
+■ 許可しないこと
+
+4. 本ソフトウェア（ビルド済みの実行ファイル、インストーラ、ソースコードの
+   いずれも）を再配布すること。改変の有無を問いません。
+5. 本ソフトウェアまたはその一部を、他のソフトウェアに組み込んで配布すること。
+6. 本ソフトウェアを販売、貸与、または有償のサービスの一部として提供すること。
+7. 著作権表示およびこの許諾条件を削除・改変すること。
+
+■ 免責
+
+8. 本ソフトウェアは現状のまま提供されます。明示・黙示を問わず、商品性、
+   特定目的への適合性、権利の非侵害を含むいかなる保証も行いません。
+9. 本ソフトウェアの使用または使用不能によって生じたいかなる損害についても、
+   著作権者は責任を負いません。
+
+■ 第三者のサービスについて
+
+10. 本ソフトウェアは、利用者が指定した Web ページを表示する機能を提供します。
+    各サービスの利用にあたっては、それぞれのサービスの利用規約に従ってください。
+    本ソフトウェアはいかなるサービス提供者とも関係がなく、提携も承認も受けて
+    いません。各サービスの名称および商標は、それぞれの権利者に帰属します。
+
+■ 同梱物
+
+11. 本ソフトウェアは Electron を利用しています。Electron および Chromium、
+    Node.js はそれぞれの著作権者が定める条件（MIT License 等）で提供されて
+    います。それらの権利は本許諾条件の影響を受けません。
+
+
+--------------------------------------------------------------------------
+Sumikko Panel — License
+Copyright (c) 2026 kto28. All rights reserved.
+
+This software is source-available but NOT open source.
+
+PERMITTED
+  1. Use free of charge, by individuals and organizations, without limits on
+     purpose or number of installations.
+  2. Read and inspect the source code.
+  3. Modify and build the source code for your own personal use only.
+
+NOT PERMITTED
+  4. Redistribute this software in any form (binaries, installers, or source),
+     modified or unmodified.
+  5. Incorporate this software, in whole or in part, into other distributed
+     software.
+  6. Sell, lease, or provide this software as part of a paid service.
+  7. Remove or alter this copyright notice and license.
+
+DISCLAIMER
+  8. Provided "AS IS", without warranty of any kind, express or implied,
+     including but not limited to merchantability, fitness for a particular
+     purpose, and non-infringement.
+  9. The copyright holder is not liable for any damages arising from the use
+     of, or inability to use, this software.
+
+THIRD-PARTY SERVICES
+ 10. This software displays web pages chosen by the user. Use of any service
+     is subject to that service's own terms. This software is not affiliated
+     with, endorsed by, or sponsored by any service provider. All service
+     names and trademarks belong to their respective owners.
+
+BUNDLED SOFTWARE
+ 11. This software uses Electron, which includes Chromium and Node.js, each
+     provided under their own licenses (MIT and others). Those rights are
+     unaffected by this license.

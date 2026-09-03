@@ -1,0 +1,124 @@
+/* ===========================================================================
+   X (Twitter) 用の注入CSS
+   ---------------------------------------------------------------------------
+   細いカラムで読みやすくするために、余計なUIを隠し、本文だけを拡大します。
+   X の DOM は予告なく変わるため、効かなくなったらここを直してください。
+
+   アプリが先頭に次の変数を注入します（設定のつまみと連動）:
+     --tld-text-scale : 文字の倍率（1 = 等倍）
+     --tld-media-max  : 画像・動画の最大高さ（none で折りたたみ無効）
+
+   このファイルは初回起動時にユーザーデータ側へコピーされ、以降はそちらが
+   読み込まれます（設定パネルの「CSSフォルダを開く」から編集できます）。
+   編集後はカラムの再読み込み（⟳）で反映されます。
+   =========================================================================== */
+
+/* --- 余計なUIを隠す ------------------------------------------------------ */
+
+/* 左のナビゲーション（ロゴ・メニュー） */
+header[role="banner"] {
+  display: none !important;
+}
+
+/* 右のサイドバー（トレンド・おすすめユーザー） */
+[data-testid="sidebarColumn"] {
+  display: none !important;
+}
+
+/* メインカラムを幅いっぱいに */
+[data-testid="primaryColumn"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+main[role="main"] > div > div,
+main[role="main"] > div > div > div {
+  max-width: 100% !important;
+}
+
+/* 画面下部に出るDMドロワー */
+[data-testid="DMDrawer"] {
+  display: none !important;
+}
+
+/* --- 文字サイズ ----------------------------------------------------------
+   実測: X は本文・表示名・時刻ともに 15px の「直指定」で、余白も 16px 固定。
+   ルート（html）の font-size を変えても一切追随しません。
+   逆に言えば、本文だけを狙って拡大してもレイアウトは 1px も動きません。
+   だからここでは要素を名指しして font-size だけを上げます。
+   ------------------------------------------------------------------------ */
+
+/* 本文 */
+[data-testid="tweetText"],
+[data-testid="tweetText"] span {
+  font-size: calc(15px * var(--tld-text-scale, 1)) !important;
+  line-height: 1.45 !important;
+}
+
+/* 表示名・ユーザー名・時刻。本文よりわずかに小さくして主従をつける */
+[data-testid="User-Name"] span,
+[data-testid="User-Name"] a,
+article[data-testid="tweet"] time {
+  font-size: calc(14px * var(--tld-text-scale, 1)) !important;
+}
+
+/* 引用ポストの中身も同じ扱いにする */
+[data-testid="tweet"] [role="link"] [data-testid="tweetText"] {
+  font-size: calc(14px * var(--tld-text-scale, 1)) !important;
+}
+
+/* --- 画像・動画の折りたたみ ----------------------------------------------
+   細いカラムでは画像が場所を食いすぎます。既定では高さを詰めておき、
+   クリックで元の大きさに開きます（展開の処理は column-preload.js 側）。
+   ------------------------------------------------------------------------ */
+
+[data-testid="tweetPhoto"],
+[data-testid="videoPlayer"],
+[data-testid="card.wrapper"] {
+  max-height: var(--tld-media-max, none) !important;
+  overflow: hidden !important;
+}
+
+/* 画像そのものを縮めても、それを包む何層かの div は元の高さを保つため、
+   下に大きな空白が残る。包んでいる側もまとめて詰める。
+   （実測: img / tweetPhoto / div / div / a のいずれもが同じ高さを持っていた） */
+article[data-testid="tweet"] div:has(> [data-testid="tweetPhoto"]),
+article[data-testid="tweet"] div:has(> div > [data-testid="tweetPhoto"]),
+article[data-testid="tweet"] a:has([data-testid="tweetPhoto"]),
+article[data-testid="tweet"] div:has(> [data-testid="videoPlayer"]),
+article[data-testid="tweet"] div:has(> div > [data-testid="videoPlayer"]) {
+  max-height: var(--tld-media-max, none) !important;
+  overflow: hidden !important;
+}
+
+/* 開いたときは包んでいる側の制限も外す */
+article[data-testid="tweet"] div:has([data-tld-expanded]),
+article[data-testid="tweet"] a:has([data-tld-expanded]) {
+  max-height: none !important;
+}
+
+/* 折りたたまれている間はクリックで開けることを示す */
+[data-testid="tweetPhoto"]:not([data-tld-expanded]),
+[data-testid="videoPlayer"]:not([data-tld-expanded]) {
+  cursor: zoom-in;
+}
+
+/* 開いたものは制限を外す */
+[data-tld-expanded] {
+  max-height: none !important;
+}
+
+/* --- こまごまとした調整 -------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 138, 152, 0.5);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}

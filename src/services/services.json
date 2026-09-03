@@ -1,0 +1,137 @@
+{
+  "$comment": [
+    "対応サービスの定義。ここに 1 項目足せば新しいサービスを追加できます。",
+    "コードを書き換える必要はありません。同じ id の CSS を styles/<id>.css に置くと、",
+    "そのサービスにだけ適用されます（無くても generic.css が使われます）。",
+    "",
+    "このファイルはユーザーデータ側へ複製され、以降はそちらが読み込まれます。",
+    "手を加えていなければアプリ更新時に最新へ入れ替わり、編集済みならそのまま残ります。",
+    "",
+    "--- 各項目の意味 -------------------------------------------------------",
+    "（未検証）と付いたものは、セレクタを実機で確かめていません。",
+    "表示はできますが、新着の検知や文字サイズの調整が効かない可能性があります。",
+    "うまく動かない場合は、カラム設定の「開発者ツール」で実際の要素を見て直してください。",
+    "",
+    "id        識別子。CSS のファイル名とセッションの保存先に使われる",
+    "label     設定画面での表示名",
+    "home      カラムを追加したときの初期 URL",
+    "hosts     同一サービスとみなすホスト。ここに無いリンクは既定のブラウザで開く",
+    "textBase  本文の基準文字サイズ(px)。文字倍率はこれに掛かる（表示用の目安）",
+    "post      新着検知に使う。selector=投稿1件、key=同じ投稿を見分けるための手がかり",
+    "media     折りたたむ画像・動画",
+    "live      新着の流し込み。key=送るキー、pending=新着が待っていることを示す要素",
+    "loggedOut ログアウト判定。loggedIn に当たるものがあれば「ログイン済み」で打ち切る",
+    "----------------------------------------------------------------------"
+  ],
+
+  "services": [
+    {
+      "id": "x",
+      "label": "X (Twitter)",
+      "home": "https://x.com/home",
+      "hosts": ["x.com", "twitter.com", "mobile.x.com", "pro.x.com"],
+      "textBase": 15,
+      "post": {
+        "selector": "article[data-testid=\"tweet\"]",
+        "key": { "selector": "a[href*=\"/status/\"]", "attr": "href" }
+      },
+      "media": "[data-testid=\"tweetPhoto\"], [data-testid=\"videoPlayer\"]",
+      "live": {
+        "key": ".",
+        "pending": "[data-testid=\"pillLabel\"]",
+        "note": "X 自身が aria-label で「ピリオドキーを押してください」と案内している"
+      },
+      "loggedOut": {
+        "loggedIn": ["article[data-testid=\"tweet\"]"],
+        "paths": ["^/(i/flow/|i/jf/|login|signup)"],
+        "present": [
+          "[data-testid=\"loginButton\"]",
+          "input[autocomplete=\"username\"]",
+          "input[name=\"text\"]",
+          "a[href*=\"/i/flow/login\"]"
+        ],
+        "texts": ["ログイン", "Log in"]
+      }
+    },
+
+    {
+      "id": "mixi2",
+      "label": "mixi2",
+      "home": "https://mixi.social/",
+      "hosts": ["mixi.social", "mixi2.jp"],
+      "textBase": 15,
+      "post": {
+        "selector": "article, [role=\"article\"], [data-testid=\"post\"]",
+        "key": { "selector": "a[href*=\"/posts/\"], a[href*=\"/p/\"], time", "attr": "href", "fallbackAttr": "datetime" }
+      },
+      "media": "article img, [role=\"article\"] img, article video, [role=\"article\"] video",
+      "live": null,
+      "loggedOut": {
+        "loggedIn": ["article", "[role=\"article\"]", "[role=\"feed\"]"],
+        "paths": ["/(login|signin)"],
+        "present": ["input[type=\"password\"]"],
+        "texts": ["ログイン", "Log in", "ログインする"]
+      }
+    },
+
+    {
+      "id": "bluesky",
+      "label": "Bluesky（未検証）",
+      "home": "https://bsky.app/",
+      "hosts": ["bsky.app"],
+      "textBase": 15,
+      "post": {
+        "selector": "[data-testid^=\"feedItem\"], [data-testid^=\"postThreadItem\"]",
+        "key": { "selector": "a[href*=\"/post/\"]", "attr": "href" }
+      },
+      "media": "[data-testid=\"images\"] img, video",
+      "live": null,
+      "loggedOut": {
+        "loggedIn": ["[data-testid^=\"feedItem\"]"],
+        "paths": ["^/(signin|signup)"],
+        "present": ["input[type=\"password\"]"],
+        "texts": ["Sign in", "サインイン"]
+      }
+    },
+
+    {
+      "id": "mastodon",
+      "label": "Mastodon（未検証）",
+      "home": "https://mastodon.social/home",
+      "hosts": ["mastodon.social"],
+      "textBase": 15,
+      "post": {
+        "selector": "article.status, .status__wrapper, article[data-id]",
+        "key": { "selector": "a.status__relative-time, time", "attr": "href", "fallbackAttr": "datetime" }
+      },
+      "media": ".media-gallery, .status__media, video",
+      "live": null,
+      "loggedOut": {
+        "loggedIn": ["article.status", ".status__wrapper"],
+        "paths": ["^/(auth|about)"],
+        "present": ["input[type=\"password\"]"],
+        "texts": ["ログイン", "Log in", "Sign in"]
+      }
+    },
+
+    {
+      "id": "generic",
+      "label": "その他のWeb",
+      "home": "https://example.com/",
+      "hosts": [],
+      "textBase": 15,
+      "post": {
+        "selector": "article, [role=\"article\"]",
+        "key": { "text": true }
+      },
+      "media": "article img, [role=\"article\"] img, main img",
+      "live": null,
+      "loggedOut": {
+        "loggedIn": [],
+        "paths": [],
+        "present": ["input[type=\"password\"]"],
+        "texts": []
+      }
+    }
+  ]
+}
