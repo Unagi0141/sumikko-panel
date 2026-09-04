@@ -47,6 +47,55 @@ let cursorPoll = null;
 let snapUntil = 0;       // この時刻まではジオメトリ再適用中とみなす（再入防止）
 let quitting = false;
 
+/* ------------------------------------------------------------------ *
+ * 落ちたときの記録
+ * ------------------------------------------------------------------ */
+
+// 常駐アプリなので、理由を残さず消えるのがいちばん困る。
+// パッケージ版は端末を持たないため、握りつぶさずファイルへ書く。
+function errorLogPath() {
+  try {
+    return path.join(app.getPath('userData'), 'error.log');
+  } catch {
+    return null;
+  }
+}
+
+function recordError(kind, err) {
+  const text = `[${new Date().toISOString()}] ${kind}: ${(err && err.stack) || err}
+`;
+  console.error(text.trim());
+
+  const file = errorLogPath();
+  if (!file) return;
+  try {
+    const fs = require('fs');
+    // 際限なく太らせない。1MB を超えたら捨てて新しく始める。
+    try {
+      if (fs.statSync(file).size > 1024 * 1024) fs.unlinkSync(file);
+    } catch {
+      // まだ無いだけ
+    }
+    fs.appendFileSync(file, text, 'utf8');
+  } catch {
+    // 書けなくても続行する
+  }
+}
+
+// 既定のままだと、主プロセスの例外は毎回モーダルダイアログになって終了する。
+// 終了処理の途中で届く通知（作業領域の変化など）でも出てしまい、
+// 利用者には「閉じるたびにエラーが出る」としか見えない。
+process.on('uncaughtException', (err) => {
+  recordError('uncaughtException', err);
+  // 終了中の例外は、もう誰にも知らせる必要がない
+  if (quitting) return;
+  // それ以外は動き続ける。常駐をやめるほうが実害が大きい。
+});
+
+process.on('unhandledRejection', (reason) => {
+  recordError('unhandledRejection', reason);
+});
+
 const win32 = new Win32Bridge();
 let appbarActive = false;
 let fullscreenPoll = null;
@@ -150,7 +199,7 @@ async function applyAppBar(display) {
 
   // MoveWindow が動かすのは「影の余白を含む枠」なので、そのままだと見えている
   // 部分が予約領域より 8px ほど内側に入る。Electron 側の座標系で置き直して隙間を消す。
-  if (result && result.width) {
+  if (result && result.width && alive()) {
     win.setBounds({
       x: Math.round(result.x / scale),
       y: Math.round(result.y / scale),
@@ -172,12 +221,13 @@ async function removeAppBar() {
 }
 
 async function applyGeometry(display = currentDisplay()) {
-  if (!win) return;
+  if (!alive()) return;
   snapUntil = Date.now() + 900;
 
   if (state().reserveSpace && win32.available) {
     try {
       await applyAppBar(display);
+      if (!alive()) return;
       if (strip && !strip.isDestroyed()) strip.setBounds(stripBounds(display));
       snapUntil = Date.now() + 900;
       return;
@@ -187,6 +237,8 @@ async function applyGeometry(display = currentDisplay()) {
   }
 
   await removeAppBar();
+  // ここまでに終了が始まっていることがある
+  if (!alive()) return;
 
   const target = dockBounds(display);
   const cur = win.getBounds();
@@ -216,7 +268,7 @@ function startFullscreenWatch() {
 
     if (value) {
       // 全画面のアプリが前に出ている間は完全に引っ込む
-      if (win && win.isVisible()) {
+      if (alive() && win.isVisible()) {
         hiddenByFullscreen = true;
         hideDock({ releaseSpace: false });
         if (strip && !strip.isDestroyed()) strip.hide();
@@ -275,7 +327,7 @@ function stopFullscreenWatch() {
  * ------------------------------------------------------------------ */
 
 function showDock({ focus = true } = {}) {
-  if (!win) return;
+  if (!alive()) return;
   clearTimeout(hideTimer);
   hideTimer = null;
   if (strip && !strip.isDestroyed()) strip.hide();
@@ -292,7 +344,7 @@ function showDock({ focus = true } = {}) {
  *   その都度リサイズされて煩わしいので保持したままにする。
  */
 function hideDock({ releaseSpace = true } = {}) {
-  if (!win) return;
+  if (!alive()) return;
   clearTimeout(hideTimer);
   hideTimer = null;
   win.hide();
@@ -304,15 +356,32 @@ function hideDock({ releaseSpace = true } = {}) {
 }
 
 function toggleDock() {
-  if (win && win.isVisible() && !win.isMinimized()) hideDock();
+  if (!alive()) return;
+  if (win.isVisible() && !win.isMinimized()) hideDock();
   else showDock();
+}
+
+/** ウインドウに触ってよい状態か。破棄済みに触ると例外で主プロセスが落ちる。 */
+function alive() {
+  return !quitting && !!win && !win.isDestroyed();
 }
 
 // ディスプレイの抜き差しで Windows がウインドウを最小化することがある。
 // 表示しているつもりのときは戻し、位置も取り直す。
+//
+// 終了時に AppBar を解除すると作業領域が変わり、Windows がこの通知を出す。
+// つまりウインドウを壊したあとにも届くので、必ず生死を確かめてから触る。
 function handleDisplayChange() {
-  if (win && win.isVisible() && win.isMinimized()) win.restore();
+  if (!alive()) return;
+  if (win.isVisible() && win.isMinimized()) win.restore();
   applyGeometry();
+}
+
+/** 終了時と再起動時に、遅れて届く通知を止める。 */
+function stopDisplayWatch() {
+  screen.removeListener('display-metrics-changed', handleDisplayChange);
+  screen.removeListener('display-added', handleDisplayChange);
+  screen.removeListener('display-removed', handleDisplayChange);
 }
 
 function pointInBounds(pt, b, pad = 0) {
@@ -324,7 +393,7 @@ function pointInBounds(pt, b, pad = 0) {
 function startCursorWatch() {
   stopCursorWatch();
   cursorPoll = setInterval(() => {
-    if (!win || !state().autoHide || fullscreenNow) return;
+    if (!alive() || !state().autoHide || fullscreenNow) return;
     const pt = screen.getCursorScreenPoint();
 
     if (win.isVisible()) {
@@ -352,14 +421,14 @@ function applyAutoHide() {
   if (state().autoHide) {
     ensureStrip();
     startCursorWatch();
-    if (win && !win.isVisible() && !hiddenByFullscreen) {
+    if (alive() && !win.isVisible() && !hiddenByFullscreen) {
       strip.setBounds(stripBounds());
       strip.showInactive();
     }
   } else {
     stopCursorWatch();
     if (strip && !strip.isDestroyed()) strip.hide();
-    if (win && !win.isVisible() && !hiddenByFullscreen) showDock();
+    if (alive() && !win.isVisible() && !hiddenByFullscreen) showDock();
   }
 }
 
@@ -438,7 +507,7 @@ function createWindow() {
 
   win.on('resize', fitChrome);
   win.on('resized', () => {
-    if (isSnapping()) return;
+    if (!alive() || isSnapping()) return;
     const b = win.getBounds();
     store.patch({ width: b.width });
     applyGeometry();
@@ -446,7 +515,7 @@ function createWindow() {
   });
   // 別のディスプレイへドラッグしたら、そこを表示先として覚えて端に吸着し直す。
   win.on('moved', () => {
-    if (isSnapping()) return;
+    if (!alive() || isSnapping()) return;
     const dropped = screen.getDisplayMatching(win.getBounds());
     store.patch({ displayId: dropped.id });
     applyGeometry(dropped);
@@ -461,6 +530,7 @@ function createWindow() {
   if (process.env.TLDOCK_DEBUG) {
     for (const ev of ['show', 'hide', 'minimize', 'restore', 'blur', 'focus', 'moved', 'resized']) {
       win.on(ev, () => {
+        if (!alive()) return;
         console.log('[debug]', ev, JSON.stringify(win.getBounds()), 'min=' + win.isMinimized(), 'vis=' + win.isVisible());
       });
     }
@@ -472,7 +542,7 @@ function createWindow() {
 }
 
 function fitChrome() {
-  if (!win || !chromeView) return;
+  if (!alive() || !chromeView) return;
   const { width, height } = win.getContentBounds();
   chromeView.setBounds({ x: 0, y: 0, width, height });
 }
@@ -584,6 +654,7 @@ function registerShortcut() {
 // app.exit() は before-quit を通らないので、後始末はここで自前で行う。
 async function relaunchApp() {
   quitting = true;
+  stopDisplayWatch();
   stopCursorWatch();
   stopFullscreenWatch();
   stopStaleWatch();
@@ -906,6 +977,7 @@ if (!app.requestSingleInstanceLock()) {
   // 予約した作業領域は必ず返してから終わる。返し損ねると画面が狭いままになる。
   app.on('before-quit', (e) => {
     quitting = true;
+    stopDisplayWatch();
     stopCursorWatch();
     stopFullscreenWatch();
     stopStaleWatch();
