@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>アイコンのもと</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+      }
+      svg {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      障子のすきまから猫が覗いている。
+      すきまが縦長の暗い帯になっているのは、このアプリ自体（画面端の縦パネル）の形。
+      小さいサイズでも「明るい地 → 縦の暗い帯 → その中に白い顔」の三層が残るように、
+      細かい模様は size が小さいときに落とす。
+    -->
+    <svg
+      id="icon"
+      width="256"
+      height="256"
+      viewBox="0 0 256 256"
+      xmlns="http://www.w3.org/2000/svg"
+      shape-rendering="geometricPrecision"
+    >
+      <defs>
+        <clipPath id="round">
+          <rect x="0" y="0" width="256" height="256" rx="56" ry="56" />
+        </clipPath>
+        <clipPath id="slit">
+          <rect x="78" y="0" width="100" height="256" />
+        </clipPath>
+      </defs>
+
+      <g clip-path="url(#round)">
+        <!-- 障子紙 -->
+        <rect x="0" y="0" width="256" height="256" fill="#f2ece0" />
+
+        <!-- 組子。小さいサイズでは潰れるので JS で消す -->
+        <g id="lattice" stroke="#ded4c1" stroke-width="5" stroke-linecap="square">
+          <line x1="0" y1="70" x2="256" y2="70" />
+          <line x1="0" y1="140" x2="256" y2="140" />
+          <line x1="0" y1="210" x2="256" y2="210" />
+          <line x1="32" y1="0" x2="32" y2="256" />
+          <line x1="224" y1="0" x2="224" y2="256" />
+        </g>
+
+        <!-- すきま（開いた戸の向こう側） -->
+        <rect x="78" y="0" width="100" height="256" fill="#171c23" />
+
+        <!-- 猫。すきまの幅で切り取る -->
+        <g clip-path="url(#slit)">
+          <!-- 頭と耳をひと続きの輪郭で描く。
+               三角を頭に重ねると継ぎ目が角のように見えてしまうため。
+               耳は「細く長く」より「太く短く」のほうが猫に見える。 -->
+          <path
+            d="M84 178
+               C84 158 84 148 86 140
+               L104 110
+               L124 140
+               L132 140
+               L152 110
+               L170 140
+               C172 148 172 158 172 178
+               C172 202 152 216 128 216
+               C104 216 84 202 84 178 Z"
+            fill="#f7f4ee"
+          />
+          <!-- 内耳。これがあると一気に猫になる。小さいサイズでは消す -->
+          <g id="inner-ears" fill="#e9a3ab">
+            <path d="M97 137 L104 121 L114 137 Z" />
+            <path d="M159 137 L152 121 L142 137 Z" />
+          </g>
+          <!-- 目 -->
+          <g id="eyes" fill="#171c23">
+            <ellipse cx="110" cy="178" rx="10" ry="12" />
+            <ellipse cx="146" cy="178" rx="10" ry="12" />
+          </g>
+          <!-- 鼻。小さいサイズでは消す -->
+          <path id="nose" d="M121 196 L135 196 L128 204 Z" fill="#e9a3ab" />
+        </g>
+
+        <!-- 戸の縁。すきまの両側に木の見付けを立てる -->
+        <rect id="frameL" x="70" y="0" width="8" height="256" fill="#bcab8b" />
+        <rect id="frameR" x="178" y="0" width="8" height="256" fill="#bcab8b" />
+      </g>
+    </svg>
+
+    <script>
+      // ?detail=16 のように、最終的に何 px で使うかが渡される。
+      // 描くのは常に 256px。小さく使う絵ほど要素を間引いて、縮めたとき形が残るようにする。
+      const size = Number(new URLSearchParams(location.search).get('detail')) || 256;
+
+      if (size < 48) {
+        document.getElementById('lattice').remove();
+        document.getElementById('nose').remove();
+        document.getElementById('inner-ears').remove();
+      }
+      if (size < 32) {
+        document.getElementById('frameL').remove();
+        document.getElementById('frameR').remove();
+        // 目を大きくしないと 16px で消える
+        for (const e of document.querySelectorAll('#eyes ellipse')) {
+          e.setAttribute('rx', 13);
+          e.setAttribute('ry', 15);
+        }
+      }
+      document.body.style.width = '256px';
+      document.body.style.height = '256px';
+    </script>
+  </body>
+</html>

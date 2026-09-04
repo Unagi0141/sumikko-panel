@@ -9,7 +9,7 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "icon": "node tools/make-icon.js",
+    "icon": "electron tools/make-icon.js",
     "shortcut": "node tools/make-shortcut.js",
     "shortcut:remove": "node tools/make-shortcut.js --remove",
     "pack": "electron-builder --dir",

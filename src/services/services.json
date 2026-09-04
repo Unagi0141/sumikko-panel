@@ -36,6 +36,16 @@
         "key": { "selector": "a[href*=\"/status/\"]", "attr": "href" }
       },
       "media": "[data-testid=\"tweetPhoto\"], [data-testid=\"videoPlayer\"]",
+
+      "tab": {
+        "paths": ["^/home$"],
+        "container": "[role=\"tablist\"]",
+        "item": "[role=\"tab\"]",
+        "selected": "aria-selected",
+        "labels": ["フォロー中", "Following"],
+        "note": "X のホームは既定で「おすすめ」が開く。毎回ここへ戻したいので、選ばれていなければ押す。"
+      },
+
       "live": {
         "key": ".",
         "pending": "[data-testid=\"pillLabel\"]",

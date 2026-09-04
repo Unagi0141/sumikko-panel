@@ -243,6 +243,66 @@ function setupMediaExpand() {
 }
 
 /* ------------------------------------------------------------------ *
+ * 表示するタブの固定
+ * ------------------------------------------------------------------ */
+
+// X のホームは開くたび「おすすめ」に戻る。定義に tab があれば、
+// 指定された見出しのタブが選ばれていないときだけ押して戻す。
+// 押しても変わらない作りに変わっていた場合に叩き続けないよう、回数で打ち切る。
+const TAB_MAX_TRIES = 5;
+let tabTries = 0;
+let tabPath = null;
+
+function keepTab() {
+  const rule = SERVICE.tab;
+  if (!rule || !rule.labels || !rule.labels.length) return;
+
+  // 画面を移ったら数え直す（SPA なのでプリロードは作り直されない）
+  if (tabPath !== location.pathname) {
+    tabPath = location.pathname;
+    tabTries = 0;
+  }
+
+  // タイムライン以外（個別の投稿や設定画面）では触らない
+  if (rule.paths && rule.paths.length && !anyPathMatch(rule.paths)) return;
+
+  let list = document;
+  if (rule.container) {
+    list = document.querySelector(rule.container);
+    if (!list) return; // まだ描かれていない
+  }
+
+  let items;
+  try {
+    items = list.querySelectorAll(rule.item || '[role="tab"]');
+  } catch {
+    return; // 定義側のセレクタが壊れていても落とさない
+  }
+
+  const selectedAttr = rule.selected || 'aria-selected';
+  let target = null;
+  let selected = null;
+
+  for (const el of items) {
+    if (!visible(el)) continue;
+    if (el.getAttribute(selectedAttr) === 'true') selected = el;
+    const text = (el.innerText || el.getAttribute('aria-label') || '').trim();
+    if (!text || text.length > 40) continue;
+    if (rule.labels.some((l) => text === l || text.includes(l))) target = el;
+  }
+
+  if (!target) return;          // まだ出ていない、または見出しが変わった
+  if (target === selected) {    // もう目的のタブ。数え直して次に備える
+    tabTries = 0;
+    return;
+  }
+  if (tabTries >= TAB_MAX_TRIES) return;
+
+  tabTries += 1;
+  target.click();
+}
+
+/* ------------------------------------------------------------------ *
  * ログイン欄への入力（送信はしない）
  * ------------------------------------------------------------------ */
 
@@ -327,9 +387,25 @@ function boot() {
   reportAuthState();
   for (const delay of [3000, 10000]) setTimeout(reportAuthState, delay);
 
+  // タブは描き終わるまで出てこないので、最初だけ短い間隔でも試す
+  for (const delay of [800, 2500, 6000]) {
+    setTimeout(() => {
+      try {
+        keepTab();
+      } catch {
+        // 無視
+      }
+    }, delay);
+  }
+
   setInterval(() => {
     try {
       checkLive();
+    } catch {
+      // 無視
+    }
+    try {
+      keepTab();
     } catch {
       // 無視
     }
