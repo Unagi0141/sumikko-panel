@@ -19,9 +19,12 @@
       content="任意の Web ページを画面端に常駐させる Windows アプリ。他のウィンドウを押しのけて設置できるので、最大化しても隠れません。無料。"
     />
     <meta property="og:url" content="https://unagi0141.github.io/sumikko-panel/" />
-    <meta property="og:image" content="https://unagi0141.github.io/sumikko-panel/icon-256.png" />
+    <meta property="og:image" content="https://unagi0141.github.io/sumikko-panel/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="すみっこパネル — 画面の端を、ちゃんと空けてくれる。" />
     <meta property="og:locale" content="ja_JP" />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="canonical" href="https://unagi0141.github.io/sumikko-panel/" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1232,12 +1235,17 @@
             <div class="notice">
               <span class="eyebrow" data-k="e74">まだベータです</span>
               <p data-k="e75">
-                作者の環境でしか動作を確認していません。他の PC、別の画面解像度、
-                シングルモニタでの動きは未検証です。<strong>不具合が残っている前提</strong>で
-                お使いください。おかしなところがあれば報告していただけると助かります。
+                いまのところ、作者の PC でしか動かしていません。画面の数や解像度が違うと、
+                どうなるか分かっていません。<strong>どこか壊れている前提</strong>で
+                触ってみてください。
+              </p>
+              <p data-k="e95">
+                「ここ変だぞ」と思ったら
+                <a href="https://github.com/Unagi0141/sumikko-panel/issues">こちらから教えてください</a>。
+                GitHub のアカウントは要りますが、それだけです。文句でも要望でも大歓迎です。
               </p>
               <p data-k="e76">
-                更新は自動で受け取り、次にアプリを終了したときに適用されます。
+                更新は自動で受け取ります。次にアプリを閉じたとき、こっそり入れ替わります。
               </p>
             </div>
 
@@ -1259,11 +1267,11 @@
           <div class="cta cta-end">
             <a class="dl" href="https://github.com/Unagi0141/sumikko-panel/releases/latest/download/SumikkoPanel-Setup.exe">
               ダウンロード
-              <small>Windows 10 / 11 · 64bit</small>
+              <small data-k="e96">Windows 10 / 11 · 64bit</small>
             </a>
-            <span class="meta">v0.9.0 ベータ · 約 110 MB</span>
+            <span class="meta" data-k="e97">v0.9.0 ベータ · 約 110 MB</span>
           </div>
-          <p class="dl-note">
+          <p class="dl-note" data-k="e98">
             押すとインストーラが 1 つだけ落ちてきます。<strong>それを開けば入ります。</strong>
             他に用意するものはありません。
           </p>
@@ -1305,6 +1313,11 @@
         <p data-k="e94">
           本ソフトの利用によって生じた損害について、作者は責任を負いません。
           各サービスのご利用にあたっては、それぞれの利用規約に従ってください。
+        </p>
+        <p data-k="e99">
+          <a href="https://github.com/Unagi0141/sumikko-panel/issues">不具合の報告・要望</a>
+          ／
+          <a href="https://github.com/Unagi0141/sumikko-panel">ソースコード</a>
         </p>
       </div>
     </footer>

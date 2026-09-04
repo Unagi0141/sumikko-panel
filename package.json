@@ -16,7 +16,8 @@
     "dist": "electron-builder --win",
     "page": "node tools/preview-page.js",
     "page:edit": "node tools/preview-page.js --edit",
-    "tag": "node tools/tag-editable.js"
+    "tag": "node tools/tag-editable.js",
+    "og": "electron tools/make-og.js"
   },
   "build": {
     "appId": "com.kto28.sumikko-panel",
