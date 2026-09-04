@@ -43,7 +43,7 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "SumikkoPanel-Setup-${version}.${ext}"
+      "artifactName": "SumikkoPanel-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,

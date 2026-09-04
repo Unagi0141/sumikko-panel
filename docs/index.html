@@ -890,6 +890,18 @@
           transition: none !important;
         }
       }
+      /* ダウンロード節の末尾に置くボタンまわり */
+      .cta-end {
+        margin-top: 2.4rem;
+        justify-content: center;
+      }
+      .dl-note {
+        margin-top: 1rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
       /* 文章の揃えと余白。編集ツール（npm run page:edit）が付け外しする。
          ここに無いと、保存しても公開ページでは効かない。 */
       .tp-al-left {
@@ -949,7 +961,7 @@
             アクティブウィンドウを最大化しても閲覧可能です。
           </p>
           <div class="cta">
-            <a class="dl" href="https://github.com/Unagi0141/sumikko-panel/releases/latest">
+            <a class="dl" href="https://github.com/Unagi0141/sumikko-panel/releases/latest/download/SumikkoPanel-Setup.exe">
               ダウンロード
               <small data-k="e6">Windows 10 / 11 · 64bit</small>
             </a>
@@ -1229,6 +1241,18 @@
               </dl>
             </div>
           </div>
+
+          <div class="cta cta-end">
+            <a class="dl" href="https://github.com/Unagi0141/sumikko-panel/releases/latest/download/SumikkoPanel-Setup.exe">
+              ダウンロード
+              <small>Windows 10 / 11 · 64bit</small>
+            </a>
+            <span class="meta">v0.9.0 ベータ · 約 110 MB</span>
+          </div>
+          <p class="dl-note">
+            押すとインストーラが 1 つだけ落ちてきます。<strong>それを開けば入ります。</strong>
+            他に用意するものはありません。
+          </p>
         </div>
       </section>
 

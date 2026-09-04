@@ -175,18 +175,30 @@ npm run dist
 
 | ファイル | 役割 |
 | --- | --- |
-| `SumikkoPanel-Setup-0.9.0.exe` | インストーラ本体 |
+| `SumikkoPanel-Setup.exe` | インストーラ本体。**利用者が落とすのはこれだけ** |
 | `latest.yml` | **自動更新がこれを見ます。忘れると更新が動きません** |
-| `SumikkoPanel-Setup-0.9.0.exe.blockmap` | 差分更新に使われます |
+| `SumikkoPanel-Setup.exe.blockmap` | 差分更新に使われます |
 
 そして次のように出します（`0.9.0` の部分は毎回そのときの版に読み替えてください）。
 
 ```bash
-gh release create v0.9.0 --title "v0.9.0（ベータ）" --notes-file notes.md dist/SumikkoPanel-Setup-0.9.0.exe dist/latest.yml dist/SumikkoPanel-Setup-0.9.0.exe.blockmap
+gh release create v0.9.0 --title "v0.9.0（ベータ）" --notes-file notes.md dist/SumikkoPanel-Setup.exe dist/latest.yml dist/SumikkoPanel-Setup.exe.blockmap
 ```
 
 `notes.md` は変更点を書いた普通のテキストです。用意しないときは `--notes-file notes.md` を
 `--notes "変更点なし"` に置き換えてください。
+
+### ファイル名にバージョンを入れないこと
+
+`build.win.artifactName` は `SumikkoPanel-Setup.${ext}` に固定しています。名前が毎回同じだからこそ、
+配布ページのボタンを次の直リンクにしておけます。
+
+```
+https://github.com/Unagi0141/sumikko-panel/releases/latest/download/SumikkoPanel-Setup.exe
+```
+
+ここにバージョンを入れると、版を上げた瞬間に配布ページのボタンが 404 になります。
+版は GitHub のリリースページとボタン脇の表記で分かるので、ファイル名に持たせる必要はありません。
 
 ### pre-release にしないこと
 
@@ -232,7 +244,7 @@ git push
 4. リリースを出す
 
 ```bash
-gh release create v0.9.1 --title "v0.9.1" --notes "変更点を書く" dist/SumikkoPanel-Setup-0.9.1.exe dist/latest.yml dist/SumikkoPanel-Setup-0.9.1.exe.blockmap
+gh release create v0.9.1 --title "v0.9.1" --notes "変更点を書く" dist/SumikkoPanel-Setup.exe dist/latest.yml dist/SumikkoPanel-Setup.exe.blockmap
 ```
 
 利用者のアプリは起動から 30 秒後と、以降 6 時間ごとに新しい版を探します。
