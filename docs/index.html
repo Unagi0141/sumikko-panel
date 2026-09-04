@@ -890,6 +890,37 @@
           transition: none !important;
         }
       }
+      /* 文章の揃えと余白。編集ツール（npm run page:edit）が付け外しする。
+         ここに無いと、保存しても公開ページでは効かない。 */
+      .tp-al-left {
+        text-align: left;
+      }
+      .tp-al-center {
+        text-align: center;
+      }
+      .tp-al-right {
+        text-align: right;
+      }
+      .tp-al-just {
+        text-align: justify;
+        text-justify: inter-character;
+      }
+      .tp-sp-0 {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+      .tp-sp-1 {
+        margin-top: 0.4rem;
+        margin-bottom: 0.4rem;
+      }
+      .tp-sp-2 {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+      }
+      .tp-sp-3 {
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+      }
     </style>
   </head>
 
@@ -897,8 +928,8 @@
     <header class="top">
       <div class="wrap top-in">
         <div class="brand">
-          <span class="mark" aria-hidden="true"><i></i><i></i></span>
-          <span>すみっこパネル</span>
+          <span class="mark" aria-hidden="true" data-k="e1"><i></i><i></i></span>
+          <span data-k="e2">すみっこパネル</span>
         </div>
         <nav class="top-links">
           <a href="#features">できること</a>
@@ -911,9 +942,9 @@
     <main>
       <div class="wrap hero">
         <div class="hero-copy">
-          <p class="eyebrow">Windows / 無料 / ベータ</p>
-          <h1>画面の端を、ちゃんと空けてくれる。</h1>
-          <p class="sub">
+          <p class="eyebrow" data-k="e3">Windows / 無料 / ベータ</p>
+          <h1 data-k="e4">画面の端を、ちゃんと空けてくれる。</h1>
+          <p class="sub" data-k="e5">
             見ていたい Web ページを画面端に置きっぱなしにする常駐アプリ。
             タスクバーと同じ仕組みで<strong>画面の領域そのものを予約する</strong>ので、
             他のアプリを最大化してもドックに覆いかぶさりません。
@@ -921,9 +952,9 @@
           <div class="cta">
             <a class="dl" href="https://github.com/Unagi0141/sumikko-panel/releases/latest">
               ダウンロード
-              <small>Windows 10 / 11 · 64bit</small>
+              <small data-k="e6">Windows 10 / 11 · 64bit</small>
             </a>
-            <span class="meta">v0.9.0 ベータ · 約 110 MB</span>
+            <span class="meta" data-k="e7">v0.9.0 ベータ · 約 110 MB</span>
           </div>
         </div>
 
@@ -931,7 +962,7 @@
           <div class="screen" role="img" aria-label="デスクトップの模式図。最大化したウインドウが、右端のドックの手前で止まっている">
             <div class="win">
               <div class="win-bar"><i></i><i></i><i></i></div>
-              <div class="win-body"><span></span><span></span><span></span><span></span></div>
+              <div class="win-body"><span data-k="e8"></span><span data-k="e9"></span><span data-k="e10"></span><span data-k="e11"></span></div>
             </div>
             <div class="dock">
               <div class="dock-bar"></div>
@@ -942,7 +973,7 @@
             </div>
             <div class="boundary"></div>
           </div>
-          <figcaption>
+          <figcaption data-k="e12">
             最大化したウインドウは破線のところで止まります。ドックが上に浮いているのではなく、
             <strong>作業領域そのものが狭くなっている</strong>ためです。
           </figcaption>
@@ -953,9 +984,9 @@
       <section id="features">
         <div class="wrap">
           <div class="sec-head">
-            <p class="eyebrow">できること</p>
-            <h2>置いておくための道具です</h2>
-            <p>
+            <p class="eyebrow" data-k="e13">できること</p>
+            <h2 data-k="e14">置いておくための道具です</h2>
+            <p data-k="e15">
               一日じゅう出しっぱなしにしても邪魔にならないことを目標に作っています。
               細いカラムで読めること、他の作業を妨げないこと、勝手に静かになること。
             </p>
@@ -963,47 +994,47 @@
 
           <div class="grid">
             <div class="card">
-              <h3>画面の領域を予約する</h3>
-              <p>
+              <h3 data-k="e16">画面の領域を予約する</h3>
+              <p data-k="e17">
                 Windows の AppBar として登録するので、最大化したウインドウがドックの手前で止まります。
                 「常に最前面」で無理やり浮かせる方式とは違い、他のアプリの邪魔をしません。
               </p>
             </div>
 
             <div class="card">
-              <h3>全画面アプリのときは引っ込む</h3>
-              <p>
+              <h3 data-k="e18">全画面アプリのときは引っ込む</h3>
+              <p data-k="e19">
                 ゲームや動画が全画面になったことを検知して、自動的に隠れます。戻れば また出てきます。
               </p>
             </div>
 
             <div class="card">
-              <h3>文字だけ大きくする</h3>
-              <p>
+              <h3 data-k="e20">文字だけ大きくする</h3>
+              <p data-k="e21">
                 ブラウザの拡大と違い、本文の文字サイズだけを上げます。余白も画像も膨らまないので、
                 細いカラムのまま読みやすくできます。画像は畳んでおいて、クリックで開けます。
               </p>
             </div>
 
             <div class="card">
-              <h3>新着を知らせる・流し込む</h3>
-              <p>
+              <h3 data-k="e22">新着を知らせる・流し込む</h3>
+              <p data-k="e23">
                 新しい投稿を検知すると短い音とバッジで知らせます。先頭を見ているときは、
                 待機中の新着を再読み込みなしで流し込みます。読んでいる最中は止まります。
               </p>
             </div>
 
             <div class="card">
-              <h3>好きなページを並べられる</h3>
-              <p>
+              <h3 data-k="e24">好きなページを並べられる</h3>
+              <p data-k="e25">
                 URL を指定すれば何でも置けます。カラムは横にも縦にも並べられ、
                 幅はドラッグで変えられます。サービスごとにログイン状態は別々に保たれます。
               </p>
             </div>
 
             <div class="card">
-              <h3>設定ファイルで拡張できる</h3>
-              <p>
+              <h3 data-k="e26">設定ファイルで拡張できる</h3>
+              <p data-k="e27">
                 対応サービスは JSON で定義されています。1 項目足せば増やせるので、
                 アプリの更新を待たずに自分で対応させられます。見た目も CSS で調整できます。
               </p>
@@ -1017,9 +1048,9 @@
       <section id="look">
         <div class="wrap">
           <div class="sec-head">
-            <p class="eyebrow">表示例</p>
-            <h2>細くても、ちゃんと読めます</h2>
-            <p>
+            <p class="eyebrow" data-k="e28">表示例</p>
+            <h2 data-k="e29">細くても、ちゃんと読めます</h2>
+            <p data-k="e30">
               幅 560px にカラムを 2 本並べた状態です。本文だけを拡大しているので、
               この幅でも文字が潰れません。画像は畳んであり、クリックで開きます。
             </p>
@@ -1030,51 +1061,51 @@
           <figure class="shot">
             <div class="dockui" role="img" aria-label="ドックの表示例。2 本のカラムに投稿が並んでいる">
               <div class="dockui-bar">
-                <span class="grip"></span>
-                <span class="dockui-btns"><i></i><i></i><i></i><i></i></span>
+                <span class="grip" data-k="e31"></span>
+                <span class="dockui-btns" data-k="e32"><i></i><i></i><i></i><i></i></span>
               </div>
 
               <div class="dockui-cols">
                 <!-- 左のカラム -->
                 <div class="dcol">
                   <div class="dcol-head">
-                    <span class="dcol-name">X</span>
-                    <span class="dcol-badge">3</span>
+                    <span class="dcol-name" data-k="e33">X</span>
+                    <span class="dcol-badge" data-k="e34">3</span>
                   </div>
                   <div class="dcol-body">
                     <article class="post">
-                      <span class="av" data-c="1"></span>
+                      <span class="av" data-c="1" data-k="e35"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>あおい</b><span>@aoi_works · 2分</span></div>
-                        <p>新しい配列のキーボードに替えて三日目。まだ小指が迷子になる。慣れる気配はあるので、もう少し粘ってみる。</p>
+                        <div class="pmeta"><b>あおい</b><span data-k="e36">@aoi_works · 2分</span></div>
+                        <p data-k="e37">新しい配列のキーボードに替えて三日目。まだ小指が迷子になる。慣れる気配はあるので、もう少し粘ってみる。</p>
                         <div class="pacts"><i></i><i></i><i></i><i></i></div>
                       </div>
                     </article>
 
                     <article class="post">
-                      <span class="av" data-c="2"></span>
+                      <span class="av" data-c="2" data-k="e38"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>みなと</b><span>@minato_pm · 14分</span></div>
-                        <p>資料を作り直していたら、そもそも会議が要らないことに気づいてしまった。</p>
-                        <div class="pshot" data-scene="hill"><span class="more">タップで開く</span></div>
+                        <div class="pmeta"><b>みなと</b><span data-k="e39">@minato_pm · 14分</span></div>
+                        <p data-k="e40">資料を作り直していたら、そもそも会議が要らないことに気づいてしまった。</p>
+                        <div class="pshot" data-scene="hill"><span class="more" data-k="e41">タップで開く</span></div>
                         <div class="pacts"><i></i><i></i><i></i><i></i></div>
                       </div>
                     </article>
 
                     <article class="post">
-                      <span class="av" data-c="3"></span>
+                      <span class="av" data-c="3" data-k="e42"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>さくら</b><span>@sakura_dev · 31分</span></div>
-                        <p>ビルドが 8 分から 40 秒になった。キャッシュの設定を一行直しただけ。</p>
+                        <div class="pmeta"><b>さくら</b><span data-k="e43">@sakura_dev · 31分</span></div>
+                        <p data-k="e44">ビルドが 8 分から 40 秒になった。キャッシュの設定を一行直しただけ。</p>
                         <div class="pacts"><i></i><i></i><i></i><i></i></div>
                       </div>
                     </article>
 
                     <article class="post">
-                      <span class="av" data-c="4"></span>
+                      <span class="av" data-c="4" data-k="e45"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>とおる</b><span>@toru_cam · 1時間</span></div>
-                        <p>朝の光がよかったので遠回りして帰った。</p>
+                        <div class="pmeta"><b>とおる</b><span data-k="e46">@toru_cam · 1時間</span></div>
+                        <p data-k="e47">朝の光がよかったので遠回りして帰った。</p>
                         <div class="pacts"><i></i><i></i><i></i><i></i></div>
                       </div>
                     </article>
@@ -1084,42 +1115,42 @@
                 <!-- 右のカラム -->
                 <div class="dcol">
                   <div class="dcol-head">
-                    <span class="dcol-name">mixi2</span>
+                    <span class="dcol-name" data-k="e48">mixi2</span>
                   </div>
                   <div class="dcol-body">
                     <article class="post">
-                      <span class="av" data-c="5"></span>
+                      <span class="av" data-c="5" data-k="e49"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>ひなた</b><span>@hinata · 5分</span></div>
-                        <p>棚を組み立て始めて 5 時間。まだ 2/3 くらいの気持ち。</p>
+                        <div class="pmeta"><b>ひなた</b><span data-k="e50">@hinata · 5分</span></div>
+                        <p data-k="e51">棚を組み立て始めて 5 時間。まだ 2/3 くらいの気持ち。</p>
                         <div class="pacts"><i></i><i></i><i></i></div>
                       </div>
                     </article>
 
                     <article class="post">
-                      <span class="av" data-c="6"></span>
+                      <span class="av" data-c="6" data-k="e52"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>かえで</b><span>@kaede_ · 22分</span></div>
-                        <p>近所に新しくできた店、コーヒーがやたら美味しかったのでまた行く。</p>
-                        <div class="pshot" data-scene="cafe"><span class="more">タップで開く</span></div>
+                        <div class="pmeta"><b>かえで</b><span data-k="e53">@kaede_ · 22分</span></div>
+                        <p data-k="e54">近所に新しくできた店、コーヒーがやたら美味しかったのでまた行く。</p>
+                        <div class="pshot" data-scene="cafe"><span class="more" data-k="e55">タップで開く</span></div>
                         <div class="pacts"><i></i><i></i><i></i></div>
                       </div>
                     </article>
 
                     <article class="post">
-                      <span class="av" data-c="7"></span>
+                      <span class="av" data-c="7" data-k="e56"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>りく</b><span>@riku_ · 2時間</span></div>
-                        <p>積んでいた本をやっと開いた。最初の 10 ページで面白いと分かる本は、だいたい最後まで面白い。</p>
+                        <div class="pmeta"><b>りく</b><span data-k="e57">@riku_ · 2時間</span></div>
+                        <p data-k="e58">積んでいた本をやっと開いた。最初の 10 ページで面白いと分かる本は、だいたい最後まで面白い。</p>
                         <div class="pacts"><i></i><i></i><i></i></div>
                       </div>
                     </article>
 
                     <article class="post">
-                      <span class="av" data-c="8"></span>
+                      <span class="av" data-c="8" data-k="e59"></span>
                       <div class="pbody">
-                        <div class="pmeta"><b>ひなた</b><span>@hinata · 昨日</span></div>
-                        <p>結局いちばん使うのは、いちばん地味な道具だったりする。</p>
+                        <div class="pmeta"><b>ひなた</b><span data-k="e60">@hinata · 昨日</span></div>
+                        <p data-k="e61">結局いちばん使うのは、いちばん地味な道具だったりする。</p>
                         <div class="pacts"><i></i><i></i><i></i></div>
                       </div>
                     </article>
@@ -1127,7 +1158,7 @@
                 </div>
               </div>
             </div>
-            <figcaption>
+            <figcaption data-k="e62">
               表示イメージです。投稿の内容・氏名はすべて架空のもので、実在のものとは関係ありません。
               各サービスの名称は、それぞれの権利者に帰属します。
             </figcaption>
@@ -1139,35 +1170,35 @@
       <section id="download">
         <div class="wrap">
           <div class="sec-head">
-            <p class="eyebrow">ダウンロード</p>
-            <h2>入れる前に読んでください</h2>
+            <p class="eyebrow" data-k="e63">ダウンロード</p>
+            <h2 data-k="e64">入れる前に読んでください</h2>
           </div>
 
           <div class="grid" style="grid-template-columns: 1fr">
             <div class="notice">
-              <span class="eyebrow">警告が出ます</span>
-              <p>
+              <span class="eyebrow" data-k="e65">警告が出ます</span>
+              <p data-k="e66">
                 このアプリには<strong>コード署名を付けていません</strong>。
                 署名の証明書は個人が継続的に持つには高く、無料で配るアプリには見合わないためです。
                 そのため初回の起動時に Windows SmartScreen の警告が出ます。隠さずに書いておきます。
               </p>
               <ol class="steps">
-                <li>「WindowsによってPCが保護されました」と出る</li>
-                <li><strong>詳細情報</strong> をクリック</li>
-                <li><strong>実行</strong> をクリック</li>
+                <li data-k="e67">「WindowsによってPCが保護されました」と出る</li>
+                <li data-k="e68"><strong>詳細情報</strong> をクリック</li>
+                <li data-k="e69"><strong>実行</strong> をクリック</li>
               </ol>
-              <p>
+              <p data-k="e70">
                 内容が気になる場合は、<a href="https://github.com/Unagi0141/sumikko-panel">ソースコード</a>を読んでから判断してください。全部公開しています。
               </p>
             </div>
 
             <div class="card">
-              <h3>何も送信しません</h3>
-              <p>
+              <h3 data-k="e71">何も送信しません</h3>
+              <p data-k="e72">
                 利用状況の収集も、外部への送信も一切ありません。設定も、各サービスのログイン状態も、
                 すべてお使いの PC の中だけに保存されます。保存先は設定から変更できます。
               </p>
-              <p>
+              <p data-k="e73">
                 各サービスへの通信は、そのサービスの Web ページを表示するためのものだけです。
                 アプリを削除したい場合は、アンインストール後に
                 <code>%APPDATA%\Sumikko Panel</code> を削除してください。
@@ -1175,28 +1206,28 @@
             </div>
 
             <div class="notice">
-              <span class="eyebrow">まだベータです</span>
-              <p>
+              <span class="eyebrow" data-k="e74">まだベータです</span>
+              <p data-k="e75">
                 作者の環境でしか動作を確認していません。他の PC、別の画面解像度、
                 シングルモニタでの動きは未検証です。<strong>不具合が残っている前提</strong>で
                 お使いください。おかしなところがあれば報告していただけると助かります。
               </p>
-              <p>
+              <p data-k="e76">
                 更新は自動で受け取り、次にアプリを終了したときに適用されます。
               </p>
             </div>
 
             <div class="card">
-              <h3>動作環境</h3>
+              <h3 data-k="e77">動作環境</h3>
               <dl class="spec">
-                <dt>OS</dt>
-                <dd>Windows 10 / 11（64bit）</dd>
-                <dt>権限</dt>
-                <dd>管理者権限は不要（ユーザー単位でインストール）</dd>
-                <dt>サイズ</dt>
-                <dd>約 110 MB（表示エンジンを同梱するため）</dd>
-                <dt>ライセンス</dt>
-                <dd>個人・法人を問わず無料で使えます。再配布と改変は許可していません。</dd>
+                <dt data-k="e78">OS</dt>
+                <dd data-k="e79">Windows 10 / 11（64bit）</dd>
+                <dt data-k="e80">権限</dt>
+                <dd data-k="e81">管理者権限は不要（ユーザー単位でインストール）</dd>
+                <dt data-k="e82">サイズ</dt>
+                <dd data-k="e83">約 110 MB（表示エンジンを同梱するため）</dd>
+                <dt data-k="e84">ライセンス</dt>
+                <dd data-k="e85">個人・法人を問わず無料で使えます。再配布と改変は許可していません。</dd>
               </dl>
             </div>
           </div>
@@ -1207,24 +1238,24 @@
       <section>
         <div class="wrap">
           <div class="sec-head">
-            <p class="eyebrow">補足</p>
-            <h2>できないこと</h2>
-            <p>先に知っておいたほうが、がっかりしなくて済むと思うので書いておきます。</p>
+            <p class="eyebrow" data-k="e86">補足</p>
+            <h2 data-k="e87">できないこと</h2>
+            <p data-k="e88">先に知っておいたほうが、がっかりしなくて済むと思うので書いておきます。</p>
           </div>
           <ul class="plain">
-            <li>
+            <li data-k="e89">
               各サービスの <strong>API は使っていません</strong>。Web ページをそのまま表示しているので、
               サービス側の作りが変わると、文字サイズの調整や新着の検知が効かなくなることがあります。
               その場合は設定から CSS と定義を直せます。
             </li>
-            <li>
+            <li data-k="e90">
               <strong>ログイン情報は保存しません。</strong>各カラムの中で 1 度ログインしてください。
               ログイン状態はそのまま保たれます。
             </li>
-            <li>
+            <li data-k="e91">
               <strong>Windows 専用です。</strong>画面領域の予約と全画面の検知が Windows の機能に依存しています。
             </li>
-            <li>
+            <li data-k="e92">
               <strong>軽くはありません。</strong>カラムごとに表示エンジンを抱えるので、2 カラムで数百 MB 使います。
             </li>
           </ul>
@@ -1234,8 +1265,8 @@
 
     <footer>
       <div class="wrap">
-        <p>すみっこパネル — 画面の端に居座る Web パネル</p>
-        <p>
+        <p data-k="e93">すみっこパネル — 画面の端に居座る Web パネル</p>
+        <p data-k="e94">
           本ソフトの利用によって生じた損害について、作者は責任を負いません。
           各サービスのご利用にあたっては、それぞれの利用規約に従ってください。
         </p>

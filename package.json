@@ -13,7 +13,10 @@
     "shortcut": "node tools/make-shortcut.js",
     "shortcut:remove": "node tools/make-shortcut.js --remove",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "page": "node tools/preview-page.js",
+    "page:edit": "node tools/preview-page.js --edit",
+    "tag": "node tools/tag-editable.js"
   },
   "build": {
     "appId": "com.kto28.sumikko-panel",
