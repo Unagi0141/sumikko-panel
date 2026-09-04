@@ -2,3 +2,6 @@ node_modules/
 dist/
 out/
 *.log
+
+# 編集ツールが保存前に残す控え。手元だけで十分
+*.bak
