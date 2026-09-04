@@ -160,15 +160,18 @@ https://unagi0141.github.io/sumikko-panel/
 
 ---
 
-## 手順 4 — 最初のリリースを出す
+## 手順 4 — リリースを出す
 
-インストーラを作ります。
+`gh`（GitHub CLI）が入っていれば、コマンド 1 つで済みます。入っていない場合は
+`winget install --id GitHub.cli -e` のあと `gh auth login` を一度だけ実行してください。
+
+まずインストーラを作ります。
 
 ```bash
 npm run dist
 ```
 
-`dist/` に次の 3 つができます。**3 つとも Releases に上げてください。**
+`dist/` に 3 つできます。**3 つとも添付してください。**
 
 | ファイル | 役割 |
 | --- | --- |
@@ -176,17 +179,23 @@ npm run dist
 | `latest.yml` | **自動更新がこれを見ます。忘れると更新が動きません** |
 | `SumikkoPanel-Setup-0.9.0.exe.blockmap` | 差分更新に使われます |
 
-上げ方:
+そして次のように出します（`0.9.0` の部分は毎回そのときの版に読み替えてください）。
 
-1. リポジトリの **Releases** → **Create a new release**
-2. **Choose a tag** に `v0.9.0` と入力し、**Create new tag** を選ぶ
-3. Release title: `v0.9.0（ベータ）`
-4. 説明に、まだベータであること・SmartScreen の警告が出ることを書く
-5. 上の 3 ファイルをドラッグして添付
-6. **Set as a pre-release** にチェック（ベータのうちは付けておく）
-7. **Publish release**
+```bash
+gh release create v0.9.0 --title "v0.9.0（ベータ）" --notes-file notes.md dist/SumikkoPanel-Setup-0.9.0.exe dist/latest.yml dist/SumikkoPanel-Setup-0.9.0.exe.blockmap
+```
 
-> **`latest.yml` を上げ忘れると自動更新が動きません。** いちばんやりがちな失敗です。
+`notes.md` は変更点を書いた普通のテキストです。用意しないときは `--notes-file notes.md` を
+`--notes "変更点なし"` に置き換えてください。
+
+### pre-release にしないこと
+
+`--prerelease` を付けると、**自動更新が誰にも届かなくなります。** electron-updater は既定で
+pre-release を無視するためです。すみっこパネルはまだ全体がベータで、別に安定版があるわけでも
+ないので、通常のリリースとして出します。ベータであることは配布ページとリリース本文に書いてあります。
+
+どうしても pre-release として配りたくなったときは、`package.json` の `build.publish` に
+`"allowPrerelease": true` を足してから付けてください。
 
 ---
 
@@ -201,18 +210,30 @@ npm run dist
 
 ## 2 回目以降のリリース
 
-```bash
-# 1. package.json の version を上げる（例: 0.9.0 → 0.9.1）
-# 2. ビルド
-npm run dist
+1. `package.json` の `version` を上げる（例: 0.9.0 → 0.9.1）
 
-# 3. コミットして送る
-git add .
+2. ビルドする
+
+```bash
+npm run dist
+```
+
+3. コミットして送る
+
+```bash
+git add -A
 git commit -m "v0.9.1"
+```
+
+```bash
 git push
 ```
 
-そのあと GitHub で新しい Release を作り、`v0.9.1` タグで 3 ファイルを添付します。
+4. リリースを出す
+
+```bash
+gh release create v0.9.1 --title "v0.9.1" --notes "変更点を書く" dist/SumikkoPanel-Setup-0.9.1.exe dist/latest.yml dist/SumikkoPanel-Setup-0.9.1.exe.blockmap
+```
 
 利用者のアプリは起動から 30 秒後と、以降 6 時間ごとに新しい版を探します。
 見つかると裏で受け取り、**次にアプリを終了したときに適用**されます。
@@ -230,9 +251,8 @@ git push
 : Source が `/docs` になっているか確認してください。反映に数分かかることがあります。
 
 **更新が降ってこない**
-: `latest.yml` を Releases に添付し忘れていないか確認してください。
-  また、pre-release にしたものは既定では配信されません。ベータの間だけ配りたい場合は
-  `package.json` の `build.publish` に `"allowPrerelease": true` を足します。
+: まず `latest.yml` を添付し忘れていないか確認してください。次に、そのリリースが
+  pre-release になっていないか確認してください。**pre-release は既定で配信されません。**
 
 **`Author identity unknown` と出る**
 : 手順 2-a の名前とメールの設定が済んでいません。設定してから `git commit` をやり直してください。
