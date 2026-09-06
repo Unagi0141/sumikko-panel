@@ -808,69 +808,6 @@ function onUpdateState(st) {
  * IPC
  * ------------------------------------------------------------------ */
 
-function registerIpc() {
-  ipcMain.handle('features:get', () => ({ credentials: features.credentials }));
-  ipcMain.handle('update:get', () => updater.get());
-  ipcMain.handle('update:check', () => {
-    updater.check();
-    return updater.get();
-  });
-  ipcMain.handle('update:install', () => updater.installNow());
-  ipcMain.handle('services:list', () => services.list());
-  ipcMain.handle('state:get', () => state());
-  ipcMain.handle('state:patch', (_e, partial) => updateState(partial || {}));
-
-  ipcMain.handle('displays:get', () => {
-    const primaryId = screen.getPrimaryDisplay().id;
-    const active = currentDisplay().id;
-    return screen.getAllDisplays().map((d, i) => ({
-      id: d.id,
-      index: i + 1,
-      label: `${d.size.width}×${d.size.height}`,
-      isPrimary: d.id === primaryId,
-      isActive: d.id === active,
-    }));
-  });
-
-  ipcMain.handle('datadir:get', () => ({
-    dir: app.getPath('userData'),
-    defaultDir: dataLocation.defaultDir(),
-    isDefault: dataInfo.isDefault,
-    movedFrom: dataInfo.moved,
-    error: dataInfo.error,
-    pointer: dataLocation.pointerPath(),
-  }));
-
-  ipcMain.handle('datadir:choose', async () => {
-    const result = await dialog.showOpenDialog({
-      title: 'データの保存先を選ぶ',
-      properties: ['openDirectory', 'createDirectory'],
-      defaultPath: app.getPath('userData'),
-    });
-    return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
-  });
-
-  ipcMain.handle('datadir:set', (_e, { target, move }) => {
-    const result = dataLocation.scheduleChange(target, app.getPath('userData'), !!move);
-    if (result.ok) setTimeout(relaunchApp, 300); // 応答を返してから再起動する
-    return result;
-  });
-
-  // 認証情報の口は、機能が有効なときだけ開ける。
-  // 無効な配布版では handler 自体が存在せず、UI からも呼べない。
-  if (features.credentials && credentials) {
-    ipcMain.handle('credentials:list', () => credentials.list());
-    ipcMain.handle('credentials:set', (_e, { service, username, password }) => {
-      const result = credentials.set(service, username, password);
-      if (result.ok) filledNotified.delete(service);
-      return result;
-    });
-    ipcMain.handle('credentials:clear', (_e, service) => {
-      filledNotified.delete(service);
-      return credentials.clear(service);
-    });
-  }
-
 /* ------------------------------------------------------------------ *
  * 画像を大きく開く
  * ------------------------------------------------------------------ */
@@ -973,6 +910,69 @@ function openImageViewer(sender, src) {
   coverDisplay(display);
   imageWin.focus();
 }
+
+function registerIpc() {
+  ipcMain.handle('features:get', () => ({ credentials: features.credentials }));
+  ipcMain.handle('update:get', () => updater.get());
+  ipcMain.handle('update:check', () => {
+    updater.check();
+    return updater.get();
+  });
+  ipcMain.handle('update:install', () => updater.installNow());
+  ipcMain.handle('services:list', () => services.list());
+  ipcMain.handle('state:get', () => state());
+  ipcMain.handle('state:patch', (_e, partial) => updateState(partial || {}));
+
+  ipcMain.handle('displays:get', () => {
+    const primaryId = screen.getPrimaryDisplay().id;
+    const active = currentDisplay().id;
+    return screen.getAllDisplays().map((d, i) => ({
+      id: d.id,
+      index: i + 1,
+      label: `${d.size.width}×${d.size.height}`,
+      isPrimary: d.id === primaryId,
+      isActive: d.id === active,
+    }));
+  });
+
+  ipcMain.handle('datadir:get', () => ({
+    dir: app.getPath('userData'),
+    defaultDir: dataLocation.defaultDir(),
+    isDefault: dataInfo.isDefault,
+    movedFrom: dataInfo.moved,
+    error: dataInfo.error,
+    pointer: dataLocation.pointerPath(),
+  }));
+
+  ipcMain.handle('datadir:choose', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'データの保存先を選ぶ',
+      properties: ['openDirectory', 'createDirectory'],
+      defaultPath: app.getPath('userData'),
+    });
+    return result.canceled || !result.filePaths[0] ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('datadir:set', (_e, { target, move }) => {
+    const result = dataLocation.scheduleChange(target, app.getPath('userData'), !!move);
+    if (result.ok) setTimeout(relaunchApp, 300); // 応答を返してから再起動する
+    return result;
+  });
+
+  // 認証情報の口は、機能が有効なときだけ開ける。
+  // 無効な配布版では handler 自体が存在せず、UI からも呼べない。
+  if (features.credentials && credentials) {
+    ipcMain.handle('credentials:list', () => credentials.list());
+    ipcMain.handle('credentials:set', (_e, { service, username, password }) => {
+      const result = credentials.set(service, username, password);
+      if (result.ok) filledNotified.delete(service);
+      return result;
+    });
+    ipcMain.handle('credentials:clear', (_e, service) => {
+      filledNotified.delete(service);
+      return credentials.clear(service);
+    });
+  }
 
   ipcMain.on('layout:set', (_e, rects) => {
     if (columns && Array.isArray(rects)) columns.applyRects(rects);
