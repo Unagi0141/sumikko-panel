@@ -263,6 +263,10 @@ function startFullscreenWatch() {
     } catch {
       return;
     }
+    // 画像ビューアは画面全体を覆うので、全画面アプリと区別が付かない。
+    // これでドックを引っ込めると、閉じたときに他のウインドウまで動いてしまう。
+    if (value && imageViewerOpen()) return;
+
     if (value === fullscreenNow) return;
     fullscreenNow = value;
 
@@ -872,7 +876,11 @@ function registerIpc() {
  * ------------------------------------------------------------------ */
 
 // カラムの中で開いても、ドックが細いので大きくならない。
-// 予約領域の外に出せる別ウインドウを 1 枚だけ用意して、そこに映す。
+// 画面全体を覆う透明な窓を 1 枚かぶせて、その中央に画像を置く。
+//
+// 作業領域ではなく画面全体（bounds）に合わせるのが要点。
+// 作業領域はドックが予約した分だけ狭いので、そこに中央寄せすると
+// 画像が反対側へ寄って見える。
 let imageWin = null;
 
 /** いま使っているモニタ。カーソルのある画面を「使用中」とみなす。 */
@@ -884,41 +892,15 @@ function activeDisplay() {
   }
 }
 
-/**
- * 画像の実寸を、そのモニタの作業領域に収まる大きさへ直す。
- *
- * ・作業領域の 92% を上限にする（画面いっぱいだと閉じにくい）
- * ・原寸より大きくは引き伸ばさない。粗くなるだけなので
- * ・ただし小さすぎる画像は見えないので、下限は設ける
- */
-function fitToDisplay(display, width, height) {
-  const area = display.workArea;
-  const maxW = Math.round(area.width * 0.92);
-  const maxH = Math.round(area.height * 0.92);
-
-  const w = Math.max(1, Number(width) || 0);
-  const h = Math.max(1, Number(height) || 0);
-  const scale = Math.min(maxW / w, maxH / h, 1);
-
-  return {
-    width: Math.min(maxW, Math.max(320, Math.round(w * scale))),
-    height: Math.min(maxH, Math.max(240, Math.round(h * scale))),
-  };
+/** 画像が開いているか。全画面判定に巻き込まれないよう外から見えるようにする。 */
+function imageViewerOpen() {
+  return !!imageWin && !imageWin.isDestroyed() && imageWin.isVisible();
 }
 
-function placeImageWindow(width, height) {
+function coverDisplay(display) {
   if (!imageWin || imageWin.isDestroyed()) return;
-
-  const display = activeDisplay();
-  const size = fitToDisplay(display, width, height);
-  const area = display.workArea;
-
-  imageWin.setBounds({
-    x: Math.round(area.x + (area.width - size.width) / 2),
-    y: Math.round(area.y + (area.height - size.height) / 2),
-    width: size.width,
-    height: size.height,
-  });
+  const b = display.bounds;
+  imageWin.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height });
 }
 
 function closeImageWindow() {
@@ -935,23 +917,25 @@ function openImageViewer(sender, src) {
   if (!found) return;
 
   const display = activeDisplay();
-  const area = display.workArea;
+  const b = display.bounds;
 
   if (!imageWin || imageWin.isDestroyed()) {
     imageWin = new BrowserWindow({
-      // 実寸が分かるまでの仮の大きさ。読み込めた時点で置き直す。
-      width: Math.round(area.width * 0.6),
-      height: Math.round(area.height * 0.6),
-      x: Math.round(area.x + area.width * 0.2),
-      y: Math.round(area.y + area.height * 0.2),
+      x: b.x,
+      y: b.y,
+      width: b.width,
+      height: b.height,
       show: false,
       frame: false,
       resizable: false,
+      movable: false,
       minimizable: false,
       maximizable: false,
       skipTaskbar: true,
-      backgroundColor: '#0f1114',
-      alwaysOnTop: true, // ドックより前に出す
+      hasShadow: false,
+      transparent: true,       // 画像以外は下が透けて見える
+      backgroundColor: '#00000000',
+      alwaysOnTop: true,       // ドックより前に出す
       webPreferences: {
         // カラムと同じセッションで読む。ログインが要る画像でも出せるように。
         session: columns.prepareSession(found.col.service),
@@ -971,16 +955,22 @@ function openImageViewer(sender, src) {
     imageWin.webContents.on('will-navigate', (e) => e.preventDefault());
 
     imageWin.loadFile(path.join(__dirname, '..', 'renderer', 'image-view.html')).then(() => {
-      if (imageWin && !imageWin.isDestroyed()) {
-        imageWin.webContents.send('image:show', { src });
-        imageWin.show();
-      }
+      if (!imageWin || imageWin.isDestroyed()) return;
+      imageWin.webContents.send('image:show', { src });
+      imageWin.show();
+      // 表示のあとにもう一度当てる。これが無いと Windows が作業領域まで
+      // 押し戻し、ドックが予約した分だけ画像が片側へ寄って見える。
+      coverDisplay(display);
+      imageWin.focus();
     });
     return;
   }
 
+  // 2 枚目以降。カーソルが別のモニタへ移っていることがあるので置き直す。
+  coverDisplay(display);
   imageWin.webContents.send('image:show', { src });
   imageWin.show();
+  coverDisplay(display);
   imageWin.focus();
 }
 
@@ -990,8 +980,6 @@ function openImageViewer(sender, src) {
 
   ipcMain.on('col:image', (e, { src } = {}) => openImageViewer(e.sender, src));
 
-  ipcMain.on('image:ready', (_e, { width, height } = {}) => placeImageWindow(width, height));
-  ipcMain.on('image:failed', () => placeImageWindow(720, 480));
   ipcMain.on('image:close', () => closeImageWindow());
 
   ipcMain.on('col:action', (_e, { id, action }) => {

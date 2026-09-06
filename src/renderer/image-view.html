@@ -5,92 +5,176 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
     <title>画像</title>
     <style>
+      /* 画面全体を覆い、画像以外を透過黒で沈める。
+         窓自体は透明なので、この背景がそのまま見た目になる。 */
       html,
       body {
         margin: 0;
         height: 100%;
-        background: #0f1114;
         overflow: hidden;
+        background: rgba(0, 0, 0, 0.72);
         cursor: zoom-out;
         user-select: none;
       }
+
       #wrap {
         height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
       }
+
       img {
-        max-width: 100%;
-        max-height: 100%;
         display: block;
+        /* 大きさは JS が決める。ここでは影だけ */
+        box-shadow: 0 24px 70px -20px rgba(0, 0, 0, 0.85);
       }
+
       #msg {
-        color: #8d97a6;
-        font: 14px/1.6 "Yu Gothic UI", system-ui, sans-serif;
+        color: #cfd6e2;
+        font: 15px/1.7 "Yu Gothic UI", system-ui, sans-serif;
         text-align: center;
-        padding: 1.5rem;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
       }
-      #hint {
+
+      #bar {
         position: fixed;
         left: 50%;
-        bottom: 12px;
+        bottom: 20px;
         transform: translateX(-50%);
-        color: #9aa4b4;
-        background: rgba(15, 17, 20, 0.82);
-        border: 1px solid #262d38;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #c3cbd8;
+        background: rgba(12, 14, 18, 0.78);
+        border: 1px solid rgba(255, 255, 255, 0.12);
         border-radius: 999px;
-        padding: 5px 14px;
-        font: 12px "Yu Gothic UI", system-ui, sans-serif;
+        padding: 6px 16px;
+        font: 12px/1 "Yu Gothic UI", system-ui, sans-serif;
         pointer-events: none;
-        opacity: 1;
+        white-space: nowrap;
         transition: opacity 0.4s;
       }
-      #hint.gone {
+      #bar.gone {
         opacity: 0;
+      }
+      #bar b {
+        color: #eef2f8;
+        font-weight: 700;
+      }
+      #bar .sep {
+        display: inline-block;
+        width: 1px;
+        height: 11px;
+        margin: 0 11px;
+        vertical-align: -1px;
+        background: rgba(255, 255, 255, 0.28);
       }
     </style>
   </head>
   <body>
     <div id="wrap"><div id="msg">読み込んでいます…</div></div>
-    <div id="hint">クリック / Esc で閉じる</div>
+    <div id="bar"><span id="info"></span></div>
 
     <script>
       const wrap = document.getElementById('wrap');
-      const hint = document.getElementById('hint');
-      let hintTimer = null;
+      const bar = document.getElementById('bar');
+      const info = document.getElementById('info');
 
-      function show({ src }) {
-        wrap.replaceChildren(Object.assign(document.createElement('div'), {
-          id: 'msg',
-          textContent: '読み込んでいます…',
-        }));
+      // 画面に対してここまでは使う。端まで詰めると閉じにくいので少しだけ残す。
+      const FILL = 0.94;
+      // 小さい画像はここまで引き伸ばす。これ以上はぼやけるだけ。
+      const MAX_UPSCALE = 3;
 
-        const img = new Image();
-        img.onload = () => {
-          wrap.replaceChildren(img);
-          window.viewer.ready(img.naturalWidth, img.naturalHeight);
-        };
-        img.onerror = () => {
-          const msg = document.createElement('div');
-          msg.id = 'msg';
-          msg.textContent = 'この画像は開けませんでした。';
-          wrap.replaceChildren(msg);
-          window.viewer.failed();
-        };
-        img.src = src;
+      let img = null;
+      let baseScale = 1; // 画面に収めたときの倍率
+      let zoom = 1;      // 利用者がホイールで足した分
+      let hideTimer = null;
 
-        // 案内は数秒で消す。毎回出ていると鬱陶しいため。
-        hint.classList.remove('gone');
-        clearTimeout(hintTimer);
-        hintTimer = setTimeout(() => hint.classList.add('gone'), 2600);
+      function viewport() {
+        return { w: window.innerWidth, h: window.innerHeight };
       }
 
-      window.viewer.onShow(show);
+      /** 画面に収まる倍率。小さい画像は MAX_UPSCALE まで引き伸ばす。 */
+      function fitScale(w, h) {
+        const v = viewport();
+        return Math.min((v.w * FILL) / w, (v.h * FILL) / h, MAX_UPSCALE);
+      }
+
+      function apply() {
+        if (!img) return;
+        const scale = baseScale * zoom;
+        img.style.width = Math.round(img.naturalWidth * scale) + 'px';
+        img.style.height = Math.round(img.naturalHeight * scale) + 'px';
+        showBar();
+      }
+
+      function showBar() {
+        if (!img) return;
+        const pct = Math.round(baseScale * zoom * 100);
+        info.innerHTML =
+          '<b>' + img.naturalWidth + ' × ' + img.naturalHeight + '</b>' +
+          '<span class="sep"></span>' + pct + '%' +
+          '<span class="sep"></span>ホイールで拡大縮小' +
+          '<span class="sep"></span>クリック / Esc で閉じる';
+        bar.classList.remove('gone');
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => bar.classList.add('gone'), 2800);
+      }
+
+      function message(text) {
+        const el = document.createElement('div');
+        el.id = 'msg';
+        el.textContent = text;
+        wrap.replaceChildren(el);
+      }
+
+      function show({ src }) {
+        img = null;
+        zoom = 1;
+        message('読み込んでいます…');
+
+        const next = new Image();
+        next.onload = () => {
+          img = next;
+          baseScale = fitScale(next.naturalWidth, next.naturalHeight);
+          wrap.replaceChildren(next);
+          apply();
+        };
+        next.onerror = () => message('この画像は開けませんでした。');
+        next.src = src;
+      }
+
+      // ホイールで拡大縮小。画面に収めた状態を 1 として 0.2〜8 倍まで。
+      addEventListener(
+        'wheel',
+        (e) => {
+          if (!img) return;
+          e.preventDefault();
+          const step = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+          zoom = Math.min(8, Math.max(0.2, zoom * step));
+          apply();
+        },
+        { passive: false }
+      );
+
+      addEventListener('resize', () => {
+        if (!img) return;
+        baseScale = fitScale(img.naturalWidth, img.naturalHeight);
+        apply();
+      });
+
       addEventListener('click', () => window.viewer.close());
       addEventListener('keydown', (e) => {
         if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') window.viewer.close();
+        // 0 で等倍に戻す
+        if (e.key === '0') {
+          zoom = 1;
+          apply();
+        }
       });
+
+      window.viewer.onShow(show);
     </script>
   </body>
 </html>
