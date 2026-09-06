@@ -37,6 +37,11 @@
       },
       "media": "[data-testid=\"tweetPhoto\"], [data-testid=\"videoPlayer\"]",
 
+      "image": {
+        "large": [["name=[a-zA-Z0-9]+", "name=large"]],
+        "note": "X は同じ画像を name=small などの縮小版で配る。開くときは大きい版に差し替える。"
+      },
+
       "tab": {
         "paths": ["^/home$"],
         "container": "[role=\"tablist\"]",

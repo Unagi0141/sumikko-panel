@@ -654,6 +654,7 @@ function registerShortcut() {
 // app.exit() は before-quit を通らないので、後始末はここで自前で行う。
 async function relaunchApp() {
   quitting = true;
+  closeImageWindow();
   stopDisplayWatch();
   stopCursorWatch();
   stopFullscreenWatch();
@@ -866,9 +867,132 @@ function registerIpc() {
     });
   }
 
+/* ------------------------------------------------------------------ *
+ * 画像を大きく開く
+ * ------------------------------------------------------------------ */
+
+// カラムの中で開いても、ドックが細いので大きくならない。
+// 予約領域の外に出せる別ウインドウを 1 枚だけ用意して、そこに映す。
+let imageWin = null;
+
+/** いま使っているモニタ。カーソルのある画面を「使用中」とみなす。 */
+function activeDisplay() {
+  try {
+    return screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  } catch {
+    return currentDisplay();
+  }
+}
+
+/**
+ * 画像の実寸を、そのモニタの作業領域に収まる大きさへ直す。
+ *
+ * ・作業領域の 92% を上限にする（画面いっぱいだと閉じにくい）
+ * ・原寸より大きくは引き伸ばさない。粗くなるだけなので
+ * ・ただし小さすぎる画像は見えないので、下限は設ける
+ */
+function fitToDisplay(display, width, height) {
+  const area = display.workArea;
+  const maxW = Math.round(area.width * 0.92);
+  const maxH = Math.round(area.height * 0.92);
+
+  const w = Math.max(1, Number(width) || 0);
+  const h = Math.max(1, Number(height) || 0);
+  const scale = Math.min(maxW / w, maxH / h, 1);
+
+  return {
+    width: Math.min(maxW, Math.max(320, Math.round(w * scale))),
+    height: Math.min(maxH, Math.max(240, Math.round(h * scale))),
+  };
+}
+
+function placeImageWindow(width, height) {
+  if (!imageWin || imageWin.isDestroyed()) return;
+
+  const display = activeDisplay();
+  const size = fitToDisplay(display, width, height);
+  const area = display.workArea;
+
+  imageWin.setBounds({
+    x: Math.round(area.x + (area.width - size.width) / 2),
+    y: Math.round(area.y + (area.height - size.height) / 2),
+    width: size.width,
+    height: size.height,
+  });
+}
+
+function closeImageWindow() {
+  if (imageWin && !imageWin.isDestroyed()) imageWin.destroy();
+  imageWin = null;
+}
+
+function openImageViewer(sender, src) {
+  if (!columns || typeof src !== 'string') return;
+  // 画面に出す前に、どこから来た画像かを確かめる
+  if (!/^https:\/\//.test(src) && !/^data:image\//.test(src)) return;
+
+  const found = columns.findByWebContents(sender);
+  if (!found) return;
+
+  const display = activeDisplay();
+  const area = display.workArea;
+
+  if (!imageWin || imageWin.isDestroyed()) {
+    imageWin = new BrowserWindow({
+      // 実寸が分かるまでの仮の大きさ。読み込めた時点で置き直す。
+      width: Math.round(area.width * 0.6),
+      height: Math.round(area.height * 0.6),
+      x: Math.round(area.x + area.width * 0.2),
+      y: Math.round(area.y + area.height * 0.2),
+      show: false,
+      frame: false,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      skipTaskbar: true,
+      backgroundColor: '#0f1114',
+      alwaysOnTop: true, // ドックより前に出す
+      webPreferences: {
+        // カラムと同じセッションで読む。ログインが要る画像でも出せるように。
+        session: columns.prepareSession(found.col.service),
+        preload: path.join(__dirname, '..', 'preload', 'image-preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    });
+
+    imageWin.on('closed', () => {
+      imageWin = null;
+    });
+
+    // 表示用の窓なので、どこへも移動させない
+    imageWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    imageWin.webContents.on('will-navigate', (e) => e.preventDefault());
+
+    imageWin.loadFile(path.join(__dirname, '..', 'renderer', 'image-view.html')).then(() => {
+      if (imageWin && !imageWin.isDestroyed()) {
+        imageWin.webContents.send('image:show', { src });
+        imageWin.show();
+      }
+    });
+    return;
+  }
+
+  imageWin.webContents.send('image:show', { src });
+  imageWin.show();
+  imageWin.focus();
+}
+
   ipcMain.on('layout:set', (_e, rects) => {
     if (columns && Array.isArray(rects)) columns.applyRects(rects);
   });
+
+  ipcMain.on('col:image', (e, { src } = {}) => openImageViewer(e.sender, src));
+
+  ipcMain.on('image:ready', (_e, { width, height } = {}) => placeImageWindow(width, height));
+  ipcMain.on('image:failed', () => placeImageWindow(720, 480));
+  ipcMain.on('image:close', () => closeImageWindow());
 
   ipcMain.on('col:action', (_e, { id, action }) => {
     if (!columns) return;
@@ -977,6 +1101,7 @@ if (!app.requestSingleInstanceLock()) {
   // 予約した作業領域は必ず返してから終わる。返し損ねると画面が狭いままになる。
   app.on('before-quit', (e) => {
     quitting = true;
+    closeImageWindow();
     stopDisplayWatch();
     stopCursorWatch();
     stopFullscreenWatch();

@@ -219,6 +219,33 @@ function checkLive() {
  * ------------------------------------------------------------------ */
 
 // CSS 側で max-height を掛けてあるので、はみ出しているものだけが対象。
+/**
+ * 画像の中から、実際に見えている URL を取り出す。
+ * img が無ければ背景画像も見る（サービスによってはそちらで出している）。
+ */
+function mediaSource(el) {
+  const img = el.matches('img') ? el : el.querySelector('img');
+  if (img && (img.currentSrc || img.src)) return img.currentSrc || img.src;
+
+  const bg = getComputedStyle(el).backgroundImage;
+  const m = bg && bg.match(/url\(["']?(.+?)["']?\)/);
+  return m ? m[1] : null;
+}
+
+/** 定義の image.large に従って、縮小版の URL を大きい版へ差し替える。 */
+function largeSource(src) {
+  const rules = (SERVICE.image && SERVICE.image.large) || [];
+  let out = src;
+  for (const [pattern, replacement] of rules) {
+    try {
+      out = out.replace(new RegExp(pattern), replacement);
+    } catch {
+      // 定義側が壊れていても、元の URL のまま続ける
+    }
+  }
+  return out;
+}
+
 function setupMediaExpand() {
   if (!SERVICE.media) return;
   document.addEventListener(
@@ -230,7 +257,20 @@ function setupMediaExpand() {
       } catch {
         return;
       }
-      if (!media || media.hasAttribute('data-tld-expanded')) return;
+      if (!media) return;
+
+      // 画像なら、ドックの外に大きく開く。
+      // カラムは細いので、この中で開いても大きくならないため。
+      const src = mediaSource(media);
+      if (src && !/^blob:/.test(src)) {
+        e.preventDefault();
+        e.stopPropagation();
+        ipcRenderer.send('col:image', { src: largeSource(src) });
+        return;
+      }
+
+      // 画像を取り出せないもの（動画など）は、これまで通りその場で開く。
+      if (media.hasAttribute('data-tld-expanded')) return;
       // 実際に切り詰められている場合だけ横取りする。
       // そうでないときは投稿を開くなど本来の動作を邪魔しない。
       if (media.scrollHeight <= media.clientHeight + 4) return;
