@@ -45,6 +45,12 @@ html.rainbow {
   --text-dim: #8d97a6;
   --accent: #60a5fa;
   --danger: #f87171;
+
+  /* テーマ色を混ぜた線と面。--accent が変われば、ここも一緒に変わる。
+     生の色をそのまま線に使うと強すぎるので、既定の線色へ少しだけ混ぜる。 */
+  --line-accent: color-mix(in srgb, var(--accent) 40%, var(--border));
+  --line-accent-soft: color-mix(in srgb, var(--accent) 18%, var(--border));
+  --wash-accent: color-mix(in srgb, var(--accent) 10%, transparent);
   --toolbar-h: 30px;
   --head-h: 24px;
   --splitter: 5px;
@@ -74,6 +80,9 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  /* 枠なしウインドウなので、縁はここで描く。テーマ色がいちばん目に入る場所。 */
+  box-sizing: border-box;
+  border: 1px solid var(--line-accent);
   color: var(--text);
   font: var(--font-size) / 1.45 "Yu Gothic UI", "Segoe UI", "Hiragino Kaku Gothic ProN", system-ui, sans-serif;
   user-select: none;
@@ -89,7 +98,7 @@ body {
   flex: 0 0 var(--toolbar-h);
   padding-right: 2px;
   background: var(--bg-raised);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line-accent);
 }
 
 .drag-handle {
@@ -191,7 +200,7 @@ body.layout-column .col.collapsed {
   flex: 0 0 var(--head-h);
   padding: 0 2px 0 5px;
   background: var(--bg-raised);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line-accent-soft);
   overflow: hidden;
 }
 
@@ -308,7 +317,7 @@ body.layout-column .splitter {
   top: 50%;
   transform: translate(-50%, -50%);
   border-radius: 1px;
-  background: var(--border);
+  background: var(--line-accent-soft);
 }
 
 body.layout-row .splitter::after {
@@ -353,7 +362,7 @@ body.resizing-column {
   align-items: center;
   justify-content: space-between;
   padding: 6px 6px 6px 10px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line-accent);
 }
 
 .settings-head h1 {
@@ -370,14 +379,14 @@ body.resizing-column {
 fieldset {
   margin: 0 0 12px;
   padding: 8px 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--line-accent-soft);
   border-radius: 7px;
   min-width: 0;
 }
 
 legend {
   padding: 0 5px;
-  color: var(--text-dim);
+  color: var(--accent);
 }
 
 .row {

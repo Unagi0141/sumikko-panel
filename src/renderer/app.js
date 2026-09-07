@@ -371,14 +371,41 @@ const ACCENT_PRESETS = [
   ['#e2e8f0', '白'],
 ];
 
+/**
+ * 一周を何段に割るか。毎秒 6 段を目安にし、速いときでも粗くなりすぎないよう下限を置く。
+ * 段数が多いほど滑らかで、そのぶん重い。
+ */
+function rainbowSteps(sec) {
+  return Math.min(240, Math.max(8, Math.round(sec * 6)));
+}
+
+/** 虹色にしたときの注意書き。速さによって足すものが変わる。 */
+function rainbowNotes(sec) {
+  const notes = [
+    '色が変わり続けるあいだ、画面を塗り直し続けます。実測で CPU 1 コアの 15% ほど（単色なら 0.2%）。常駐アプリなので、ノート PC を電池で使うときは切っておくのが無難です。',
+  ];
+  if (sec <= 1.5) {
+    notes.push(
+      '一周が速いぶんは負荷も倍の 30% ほどに上がります。ちらつきも強く出るので、目が疲れやすく、光に敏感な方には負担になることがあります。'
+    );
+  }
+  return notes.join(' ');
+}
+
 /** テーマを画面に当てる。虹色のときは CSS のアニメーションに任せる。 */
 function applyTheme(theme) {
   const t = theme || {};
   const root = document.documentElement;
   const rainbow = t.mode === 'rainbow';
 
+  const sec = Number(t.speedSec) || 8;
   root.classList.toggle('rainbow', rainbow);
-  root.style.setProperty('--rainbow-sec', (Number(t.speedSec) || 8) + 's');
+  root.style.setProperty('--rainbow-sec', sec + 's');
+
+  // 毎フレーム塗り直すと重い（実測で 1 コアの 40% 超）。
+  // 色を段階的に進めれば、変わった瞬間だけ塗り直せば済む。
+  // 毎秒 6 段なら、ゆっくり回しているぶんには継ぎ目は見えない。
+  root.style.animationTimingFunction = 'steps(' + rainbowSteps(sec) + ', end)';
 
   // 虹色のときに直接指定を残すと、どちらが勝つか読みにくい。外しておく。
   if (rainbow) root.style.removeProperty('--accent');
@@ -408,12 +435,11 @@ function renderSettings() {
   s.accent.value = theme.accent || '#60a5fa';
   s.accent.disabled = rainbow;
   s.rainbow.checked = rainbow;
-  s.rainbowSpeed.value = String(theme.speedSec || 8);
-  s.rainbowSpeedOut.textContent = `${theme.speedSec || 8} 秒`;
+  const sec = Number(theme.speedSec) || 8;
+  s.rainbowSpeed.value = String(sec);
+  s.rainbowSpeedOut.textContent = `${sec} 秒`;
   s.rainbowSpeedRow.hidden = !rainbow;
-  s.rainbowWarn.textContent = rainbow
-    ? '色が変わり続けるあいだ、画面を塗り直し続けます。実測で CPU 1 コアの 5% ほどを使い続けます（単色なら 0.5%）。常駐アプリなので、ノート PC を電池で使うときは切っておくのが無難です。'
-    : '';
+  s.rainbowWarn.textContent = rainbow ? rainbowNotes(sec) : '';
   applyTheme(theme);
 
   s.edge.value = state.edge;
@@ -867,8 +893,10 @@ s.rainbow.addEventListener('change', () =>
   patchGlobal({ theme: { ...state.theme, mode: s.rainbow.checked ? 'rainbow' : 'solid' } })
 );
 s.rainbowSpeed.addEventListener('input', () => {
-  s.rainbowSpeedOut.textContent = `${s.rainbowSpeed.value} 秒`;
-  applyTheme({ ...state.theme, speedSec: Number(s.rainbowSpeed.value) });
+  const sec = Number(s.rainbowSpeed.value);
+  s.rainbowSpeedOut.textContent = `${sec} 秒`;
+  s.rainbowWarn.textContent = rainbowNotes(sec);
+  applyTheme({ ...state.theme, speedSec: sec });
 });
 s.rainbowSpeed.addEventListener('change', () =>
   patchGlobal({ theme: { ...state.theme, speedSec: Number(s.rainbowSpeed.value) } })

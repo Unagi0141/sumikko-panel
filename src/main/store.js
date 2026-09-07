@@ -147,7 +147,7 @@ function normalize(state) {
     accent: /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(theme.accent || ''))
       ? String(theme.accent)
       : DEFAULTS.theme.accent,
-    speedSec: clamp(num(theme.speedSec, DEFAULTS.theme.speedSec), 2, 60),
+    speedSec: clamp(num(theme.speedSec, DEFAULTS.theme.speedSec), 0.5, 60),
   };
 
   const sound = state.sound && typeof state.sound === 'object' ? state.sound : {};
