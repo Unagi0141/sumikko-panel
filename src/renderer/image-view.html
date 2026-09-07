@@ -62,6 +62,9 @@
         color: #eef2f8;
         font-weight: 700;
       }
+      #bar .warn {
+        color: #f2c14e;
+      }
       #bar .sep {
         display: inline-block;
         width: 1px;
@@ -112,9 +115,15 @@
       function showBar() {
         if (!img) return;
         const pct = Math.round(baseScale * zoom * 100);
+        // 100% を超えていれば引き伸ばしている。粗く見える理由はこれなので明示する。
+        const note =
+          pct > 105
+            ? '<span class="sep"></span><span class="warn">元より大きく表示しています</span>'
+            : '';
         info.innerHTML =
           '<b>' + img.naturalWidth + ' × ' + img.naturalHeight + '</b>' +
           '<span class="sep"></span>' + pct + '%' +
+          note +
           '<span class="sep"></span>ホイールで拡大縮小' +
           '<span class="sep"></span>クリック / Esc で閉じる';
         bar.classList.remove('gone');
@@ -129,20 +138,35 @@
         wrap.replaceChildren(el);
       }
 
-      function show({ src }) {
+      // 良い順に並んだ候補を、開けるまで順に試す。
+      // サービスは同じ画像を何段階かの大きさで配っていて、
+      // 表示に使われているのはたいてい縮小版。大きいものから当たる。
+      function show({ sources }) {
         img = null;
         zoom = 1;
         message('読み込んでいます…');
 
-        const next = new Image();
-        next.onload = () => {
-          img = next;
-          baseScale = fitScale(next.naturalWidth, next.naturalHeight);
-          wrap.replaceChildren(next);
-          apply();
+        const list = (Array.isArray(sources) ? sources : [sources]).filter(Boolean);
+        let i = 0;
+
+        const tryNext = () => {
+          if (i >= list.length) {
+            message('この画像は開けませんでした。');
+            return;
+          }
+          const url = list[i++];
+          const next = new Image();
+          next.onload = () => {
+            img = next;
+            baseScale = fitScale(next.naturalWidth, next.naturalHeight);
+            wrap.replaceChildren(next);
+            apply();
+          };
+          next.onerror = tryNext; // 次の候補へ
+          next.src = url;
         };
-        next.onerror = () => message('この画像は開けませんでした。');
-        next.src = src;
+
+        tryNext();
       }
 
       // ホイールで拡大縮小。画面に収めた状態を 1 として 0.2〜8 倍まで。

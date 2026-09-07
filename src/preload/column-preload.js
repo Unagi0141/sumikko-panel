@@ -232,17 +232,28 @@ function mediaSource(el) {
   return m ? m[1] : null;
 }
 
-/** 定義の image.large に従って、縮小版の URL を大きい版へ差し替える。 */
-function largeSource(src) {
-  const rules = (SERVICE.image && SERVICE.image.large) || [];
-  let out = src;
+/**
+ * 開く候補の URL を、良い順に並べて返す。
+ *
+ * サービスは同じ画像をいくつもの大きさで配っている。表示に使われているのは
+ * たいてい縮小版なので、そのまま開くと粗い。定義の image.candidates を
+ * 上から当てて候補を作り、最後に元の URL を置く。
+ * 実際にどれを使うかは、開ける最初のものを表示側が選ぶ。
+ */
+function imageCandidates(src) {
+  const rules = (SERVICE.image && SERVICE.image.candidates) || [];
+  const out = [];
+
   for (const [pattern, replacement] of rules) {
     try {
-      out = out.replace(new RegExp(pattern), replacement);
+      const url = src.replace(new RegExp(pattern), replacement);
+      if (url !== src && !out.includes(url)) out.push(url);
     } catch {
-      // 定義側が壊れていても、元の URL のまま続ける
+      // 定義側が壊れていても、他の候補で続ける
     }
   }
+
+  out.push(src); // どれも開けなければ、表示されているものをそのまま
   return out;
 }
 
@@ -265,7 +276,7 @@ function setupMediaExpand() {
       if (src && !/^blob:/.test(src)) {
         e.preventDefault();
         e.stopPropagation();
-        ipcRenderer.send('col:image', { src: largeSource(src) });
+        ipcRenderer.send('col:image', { sources: imageCandidates(src) });
         return;
       }
 

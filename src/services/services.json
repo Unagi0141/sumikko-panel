@@ -38,8 +38,13 @@
       "media": "[data-testid=\"tweetPhoto\"], [data-testid=\"videoPlayer\"]",
 
       "image": {
-        "large": [["name=[a-zA-Z0-9]+", "name=orig"]],
-        "note": "X は同じ画像を name=small などの縮小版で配る。開くときは投稿された原寸 (orig) を取りにいく。large でも足りないため。"
+        "candidates": [
+          ["name=[a-zA-Z0-9]+", "name=orig"],
+          ["name=[a-zA-Z0-9]+", "name=4096x4096"],
+          ["name=[a-zA-Z0-9]+", "name=large"],
+          ["^([^?]+/media/[^?]+)$", "$1?name=orig"]
+        ],
+        "note": "X は同じ画像を name=small などの縮小版で配る。上から順に試し、最初に開けたものを使う。orig が無い画像もあるため代替を並べてある。"
       },
 
       "tab": {

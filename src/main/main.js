@@ -905,10 +905,14 @@ function closeImageWindow() {
   imageWin = null;
 }
 
-function openImageViewer(sender, src) {
-  if (!columns || typeof src !== 'string') return;
+function openImageViewer(sender, sources) {
+  if (!columns) return;
+
   // 画面に出す前に、どこから来た画像かを確かめる
-  if (!/^https:\/\//.test(src) && !/^data:image\//.test(src)) return;
+  const list = (Array.isArray(sources) ? sources : [sources])
+    .filter((u) => typeof u === 'string')
+    .filter((u) => /^https:\/\//.test(u) || /^data:image\//.test(u));
+  if (!list.length) return;
 
   const found = columns.findByWebContents(sender);
   if (!found) return;
@@ -953,7 +957,7 @@ function openImageViewer(sender, src) {
 
     imageWin.loadFile(path.join(__dirname, '..', 'renderer', 'image-view.html')).then(() => {
       if (!imageWin || imageWin.isDestroyed()) return;
-      imageWin.webContents.send('image:show', { src });
+      imageWin.webContents.send('image:show', { sources: list });
       imageWin.show();
       // 表示のあとにもう一度当てる。これが無いと Windows が作業領域まで
       // 押し戻し、ドックが予約した分だけ画像が片側へ寄って見える。
@@ -965,7 +969,7 @@ function openImageViewer(sender, src) {
 
   // 2 枚目以降。カーソルが別のモニタへ移っていることがあるので置き直す。
   coverDisplay(display);
-  imageWin.webContents.send('image:show', { src });
+  imageWin.webContents.send('image:show', { sources: list });
   imageWin.show();
   coverDisplay(display);
   imageWin.focus();
@@ -1038,7 +1042,7 @@ function registerIpc() {
     if (columns && Array.isArray(rects)) columns.applyRects(rects);
   });
 
-  ipcMain.on('col:image', (e, { src } = {}) => openImageViewer(e.sender, src));
+  ipcMain.on('col:image', (e, { sources } = {}) => openImageViewer(e.sender, sources));
 
   ipcMain.on('image:close', () => closeImageWindow());
 
