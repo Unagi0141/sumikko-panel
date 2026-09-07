@@ -158,32 +158,70 @@ function Set-AppBarPos([IntPtr]$hwnd, [string]$edge, [int]$x, [int]$y, [int]$w, 
   }
 }
 
-function Test-FullscreenApp {
+function Get-ForegroundMonitorRect {
+  # 前面ウインドウが載っているモニタの範囲を返す。分からなければ $null。
+  $h = [TlDockNative]::GetForegroundWindow()
+  if ($h -eq [IntPtr]::Zero) { return $null }
+
+  $mon = [TlDockNative]::MonitorFromWindow($h, 2)
+  if ($mon -eq [IntPtr]::Zero) { return $null }
+
+  $mi = New-Object TlDockNative+MONITORINFOEX
+  $mi.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type][TlDockNative+MONITORINFOEX])
+  if (-not [TlDockNative]::GetMonitorInfo($mon, [ref]$mi)) { return $null }
+
+  $m = $mi.rcMonitor
+  return @{
+    x = $m.left
+    y = $m.top
+    width = ($m.right - $m.left)
+    height = ($m.bottom - $m.top)
+  }
+}
+
+function Get-FullscreenInfo {
+  # 「全画面かどうか」だけでなく「どのモニタでか」も返す。
+  # 別のモニタで全画面になっただけなら、ドックは引っ込む必要がないため。
+  $none = @{ value = $false; monitor = $null }
+
   $state = 0
   try { [void][TlDockNative]::SHQueryUserNotificationState([ref]$state) } catch { $state = 0 }
   if ($state -eq $QUNS_RUNNING_D3D_FULL_SCREEN -or $state -eq $QUNS_PRESENTATION_MODE) {
-    return $true
+    # 排他全画面のゲームでも、前面ウインドウはそのゲームなのでモニタは取れる。
+    return @{ value = $true; monitor = (Get-ForegroundMonitorRect) }
   }
 
   # ボーダーレス全画面はうえで拾えないことがあるので、
   # 前面ウインドウがモニタ全体を覆っているかも見る。
   $h = [TlDockNative]::GetForegroundWindow()
-  if ($h -eq [IntPtr]::Zero) { return $false }
-  if ($h -eq $script:RegisteredHwnd) { return $false }
+  if ($h -eq [IntPtr]::Zero) { return $none }
+  if ($h -eq $script:RegisteredHwnd) { return $none }
 
   $cls = [TlDockNative]::ForegroundClassName()
-  if ($ShellClasses -contains $cls) { return $false }
+  if ($ShellClasses -contains $cls) { return $none }
 
   $r = New-Object TlDockNative+RECT
-  if (-not [TlDockNative]::GetWindowRect($h, [ref]$r)) { return $false }
+  if (-not [TlDockNative]::GetWindowRect($h, [ref]$r)) { return $none }
 
   $mon = [TlDockNative]::MonitorFromWindow($h, 2)
   $mi = New-Object TlDockNative+MONITORINFOEX
   $mi.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf([type][TlDockNative+MONITORINFOEX])
-  if (-not [TlDockNative]::GetMonitorInfo($mon, [ref]$mi)) { return $false }
+  if (-not [TlDockNative]::GetMonitorInfo($mon, [ref]$mi)) { return $none }
 
-  return ($r.left -le $mi.rcMonitor.left -and $r.top -le $mi.rcMonitor.top -and
-          $r.right -ge $mi.rcMonitor.right -and $r.bottom -ge $mi.rcMonitor.bottom)
+  $covers = ($r.left -le $mi.rcMonitor.left -and $r.top -le $mi.rcMonitor.top -and
+             $r.right -ge $mi.rcMonitor.right -and $r.bottom -ge $mi.rcMonitor.bottom)
+  if (-not $covers) { return $none }
+
+  $m = $mi.rcMonitor
+  return @{
+    value = $true
+    monitor = @{
+      x = $m.left
+      y = $m.top
+      width = ($m.right - $m.left)
+      height = ($m.bottom - $m.top)
+    }
+  }
 }
 
 # --- メインループ -----------------------------------------------------------
@@ -214,7 +252,7 @@ try {
           $res.result = (Set-AppBarPos ([IntPtr][int64]$req.hwnd) $req.edge $req.x $req.y $req.w $req.h $req.thickness)
         }
         'appbar_remove' { Unregister-AppBar; $res.result = $true }
-        'fullscreen'    { $res.result = [bool](Test-FullscreenApp) }
+        'fullscreen'    { $res.result = (Get-FullscreenInfo) }
         'ping'          { $res.result = 'pong' }
         default         { $res.ok = $false; $res.error = "unknown cmd: $($req.cmd)" }
       }

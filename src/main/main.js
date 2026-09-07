@@ -252,20 +252,51 @@ async function applyGeometry(display = currentDisplay()) {
  * 全画面アプリの検知
  * ------------------------------------------------------------------ */
 
+/**
+ * その全画面アプリが、ドックと同じモニタに出ているか。
+ * 別のモニタで全画面になっただけなら、ドックが引っ込む理由はない。
+ */
+function fullscreenHitsDock(info) {
+  const m = info && info.monitor;
+  // どのモニタか分からないときは、従来どおり引っ込む側に倒す
+  if (!m || typeof m.x !== 'number' || !m.width || !m.height) return true;
+
+  // ヘルパーが返すのは物理ピクセル。Electron の座標系へ直してから比べる。
+  let center = { x: Math.round(m.x + m.width / 2), y: Math.round(m.y + m.height / 2) };
+  try {
+    center = screen.screenToDipPoint(center);
+  } catch {
+    // 変換できない環境ではそのまま比べる
+  }
+
+  try {
+    return screen.getDisplayNearestPoint(center).id === currentDisplay().id;
+  } catch {
+    return true;
+  }
+}
+
 function startFullscreenWatch() {
   stopFullscreenWatch();
   if (!win32.available) return;
   fullscreenPoll = setInterval(async () => {
     if (!state().hideOnFullscreen) return;
-    let value = false;
+    let info = null;
     try {
-      value = await win32.call('fullscreen', {}, { timeoutMs: 3000 });
+      info = await win32.call('fullscreen', {}, { timeoutMs: 3000 });
     } catch {
       return;
     }
+
+    // 以前のヘルパーは真偽値だけを返していた
+    const raw = typeof info === 'boolean' ? { value: info, monitor: null } : info || { value: false };
+
     // 画像ビューアは画面全体を覆うので、全画面アプリと区別が付かない。
     // これでドックを引っ込めると、閉じたときに他のウインドウまで動いてしまう。
-    if (value && imageViewerOpen()) return;
+    if (raw.value && imageViewerOpen()) return;
+
+    // 別のモニタでの全画面は無視する
+    const value = !!raw.value && fullscreenHitsDock(raw);
 
     if (value === fullscreenNow) return;
     fullscreenNow = value;
