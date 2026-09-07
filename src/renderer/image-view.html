@@ -51,9 +51,22 @@
         border-radius: 999px;
         padding: 6px 16px;
         font: 12px/1 "Yu Gothic UI", system-ui, sans-serif;
-        pointer-events: none;
         white-space: nowrap;
         transition: opacity 0.4s;
+        cursor: default;
+      }
+      #bar button {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.08);
+        color: #eef2f8;
+        border-radius: 999px;
+        padding: 4px 11px;
+        font: inherit;
+        cursor: pointer;
+      }
+      #bar button:hover {
+        background: rgba(255, 255, 255, 0.2);
       }
       #bar.gone {
         opacity: 0;
@@ -77,12 +90,20 @@
   </head>
   <body>
     <div id="wrap"><div id="msg">読み込んでいます…</div></div>
-    <div id="bar"><span id="info"></span></div>
+    <div id="bar">
+      <span id="info"></span>
+      <button id="open-post" hidden>投稿をブラウザで開く</button>
+      <button id="open-image" hidden>画像をブラウザで開く</button>
+    </div>
 
     <script>
       const wrap = document.getElementById('wrap');
       const bar = document.getElementById('bar');
       const info = document.getElementById('info');
+      const btnPost = document.getElementById('open-post');
+      const btnImage = document.getElementById('open-image');
+      let postUrl = null;
+      let shownUrl = null;
 
       // 画面に対してここまでは使う。端まで詰めると閉じにくいので少しだけ残す。
       const FILL = 0.94;
@@ -141,9 +162,13 @@
       // 良い順に並んだ候補を、開けるまで順に試す。
       // サービスは同じ画像を何段階かの大きさで配っていて、
       // 表示に使われているのはたいてい縮小版。大きいものから当たる。
-      function show({ sources }) {
+      function show({ sources, post }) {
         img = null;
         zoom = 1;
+        postUrl = post || null;
+        shownUrl = null;
+        btnPost.hidden = !postUrl;
+        btnImage.hidden = true;
         message('読み込んでいます…');
 
         const list = (Array.isArray(sources) ? sources : [sources]).filter(Boolean);
@@ -158,6 +183,8 @@
           const next = new Image();
           next.onload = () => {
             img = next;
+            shownUrl = url;
+            btnImage.hidden = !/^https?:/.test(url);
             baseScale = fitScale(next.naturalWidth, next.naturalHeight);
             wrap.replaceChildren(next);
             apply();
@@ -188,9 +215,16 @@
         apply();
       });
 
+      bar.addEventListener('click', (e) => e.stopPropagation());
+      btnPost.addEventListener('click', () => postUrl && window.viewer.open(postUrl));
+      btnImage.addEventListener('click', () => shownUrl && window.viewer.open(shownUrl));
+
       addEventListener('click', () => window.viewer.close());
       addEventListener('keydown', (e) => {
         if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') window.viewer.close();
+        // b で投稿、i で画像を、既定のブラウザへ
+        if (e.key === 'b' && postUrl) window.viewer.open(postUrl);
+        if (e.key === 'i' && shownUrl) window.viewer.open(shownUrl);
         // 0 で等倍に戻す
         if (e.key === '0') {
           zoom = 1;

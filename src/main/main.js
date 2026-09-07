@@ -12,6 +12,7 @@ const {
   Menu,
   nativeImage,
   nativeTheme,
+  clipboard,
   dialog,
 } = require('electron');
 
@@ -482,6 +483,34 @@ function applyColorBase() {
   nativeTheme.themeSource = ['dark', 'light', 'system'].includes(base) ? base : 'dark';
 }
 
+/**
+ * カラムの中で右クリックされたときのメニュー。
+ * 埋め込んだページには既定のメニューが出ないので、こちらで用意する。
+ */
+function showColumnContextMenu({ post, link, image }) {
+  const ok = (u) => typeof u === 'string' && /^https?:\/\//.test(u);
+  const items = [];
+
+  if (ok(post)) {
+    items.push({ label: 'この投稿をブラウザで開く', click: () => shell.openExternal(post) });
+    items.push({ label: '投稿のリンクをコピー', click: () => clipboard.writeText(post) });
+  }
+  if (ok(image)) {
+    if (items.length) items.push({ type: 'separator' });
+    items.push({ label: '画像をブラウザで開く（原寸）', click: () => shell.openExternal(image) });
+    items.push({ label: '画像のリンクをコピー', click: () => clipboard.writeText(image) });
+  }
+  if (ok(link) && link !== post) {
+    if (items.length) items.push({ type: 'separator' });
+    items.push({ label: 'このリンクをブラウザで開く', click: () => shell.openExternal(link) });
+    items.push({ label: 'リンクをコピー', click: () => clipboard.writeText(link) });
+  }
+
+  if (!items.length) return;
+  if (!alive()) return;
+  Menu.buildFromTemplate(items).popup({ window: win });
+}
+
 /** 細帯にテーマを渡して読み込ませる。色を変えたらここを呼び直す。 */
 function loadStrip() {
   if (!strip || strip.isDestroyed()) return;
@@ -879,6 +908,8 @@ function onUpdateState(st) {
 // 作業領域はドックが予約した分だけ狭いので、そこに中央寄せすると
 // 画像が反対側へ寄って見える。
 let imageWin = null;
+// いま開いている画像の出どころ。外部ブラウザで開く要求を照合するために持つ。
+let imageContext = { sources: [], post: null };
 
 /** いま使っているモニタ。カーソルのある画面を「使用中」とみなす。 */
 function activeDisplay() {
@@ -900,12 +931,26 @@ function coverDisplay(display) {
   imageWin.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height });
 }
 
+/**
+ * 既定のブラウザで開く。
+ *
+ * 開いてよいのは、こちらから表示側へ渡した URL だけに限る。
+ * 表示側から送られてきた文字列をそのまま渡すと、何でも開けてしまうため。
+ */
+function openExternalChecked(url) {
+  if (typeof url !== 'string' || !/^https?:\/\//.test(url)) return false;
+  const allowed = [...imageContext.sources, imageContext.post].filter(Boolean);
+  if (!allowed.includes(url)) return false;
+  shell.openExternal(url);
+  return true;
+}
+
 function closeImageWindow() {
   if (imageWin && !imageWin.isDestroyed()) imageWin.destroy();
   imageWin = null;
 }
 
-function openImageViewer(sender, sources) {
+function openImageViewer(sender, sources, post) {
   if (!columns) return;
 
   // 画面に出す前に、どこから来た画像かを確かめる
@@ -913,6 +958,9 @@ function openImageViewer(sender, sources) {
     .filter((u) => typeof u === 'string')
     .filter((u) => /^https:\/\//.test(u) || /^data:image\//.test(u));
   if (!list.length) return;
+
+  const permalink = typeof post === 'string' && /^https?:\/\//.test(post) ? post : null;
+  imageContext = { sources: list, post: permalink };
 
   const found = columns.findByWebContents(sender);
   if (!found) return;
@@ -957,7 +1005,7 @@ function openImageViewer(sender, sources) {
 
     imageWin.loadFile(path.join(__dirname, '..', 'renderer', 'image-view.html')).then(() => {
       if (!imageWin || imageWin.isDestroyed()) return;
-      imageWin.webContents.send('image:show', { sources: list });
+      imageWin.webContents.send('image:show', { sources: list, post: permalink });
       imageWin.show();
       // 表示のあとにもう一度当てる。これが無いと Windows が作業領域まで
       // 押し戻し、ドックが予約した分だけ画像が片側へ寄って見える。
@@ -969,7 +1017,7 @@ function openImageViewer(sender, sources) {
 
   // 2 枚目以降。カーソルが別のモニタへ移っていることがあるので置き直す。
   coverDisplay(display);
-  imageWin.webContents.send('image:show', { sources: list });
+  imageWin.webContents.send('image:show', { sources: list, post: permalink });
   imageWin.show();
   coverDisplay(display);
   imageWin.focus();
@@ -1042,7 +1090,11 @@ function registerIpc() {
     if (columns && Array.isArray(rects)) columns.applyRects(rects);
   });
 
-  ipcMain.on('col:image', (e, { sources } = {}) => openImageViewer(e.sender, sources));
+  ipcMain.on('col:image', (e, { sources, post } = {}) => openImageViewer(e.sender, sources, post));
+  ipcMain.on('col:context', (_e, payload = {}) => showColumnContextMenu(payload));
+  ipcMain.on('image:open', (_e, { url } = {}) => {
+    if (openExternalChecked(url)) closeImageWindow();
+  });
 
   ipcMain.on('image:close', () => closeImageWindow());
 

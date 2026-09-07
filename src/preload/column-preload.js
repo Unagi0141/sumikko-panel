@@ -257,6 +257,41 @@ function imageCandidates(src) {
   return out;
 }
 
+/**
+ * その要素が属する投稿の、恒久リンクを返す。
+ *
+ * 投稿を見分ける鍵として既に使っている post.key（X なら /status/ を含む
+ * リンク）をそのまま使う。相対パスで書かれているので絶対 URL に直す。
+ */
+function postPermalink(el) {
+  let post = null;
+  try {
+    post = el.closest ? el.closest(postSelector()) : null;
+  } catch {
+    return null;
+  }
+  if (!post) return null;
+
+  const rule = (SERVICE.post && SERVICE.post.key) || {};
+  if (!rule.selector || !rule.attr) return null;
+
+  let href = null;
+  try {
+    const target = post.querySelector(rule.selector);
+    href = target && target.getAttribute(rule.attr);
+  } catch {
+    return null;
+  }
+  if (!href) return null;
+
+  try {
+    const url = new URL(href, location.href).href;
+    return /^https?:\/\//.test(url) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 function setupMediaExpand() {
   if (!SERVICE.media) return;
   document.addEventListener(
@@ -276,7 +311,10 @@ function setupMediaExpand() {
       if (src && !/^blob:/.test(src)) {
         e.preventDefault();
         e.stopPropagation();
-        ipcRenderer.send('col:image', { sources: imageCandidates(src) });
+        ipcRenderer.send('col:image', {
+          sources: imageCandidates(src),
+          post: postPermalink(media),
+        });
         return;
       }
 
@@ -400,6 +438,45 @@ function fillOnly({ username, password }) {
  * 起動
  * ------------------------------------------------------------------ */
 
+/**
+ * 右クリックしたときに、その場所にある投稿・リンク・画像をメインへ伝える。
+ * 埋め込んだページには既定のメニューが出ないので、こちらで用意する。
+ */
+function setupContextMenu() {
+  document.addEventListener(
+    'contextmenu',
+    (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+
+      let link = null;
+      try {
+        const a = t.closest('a[href]');
+        const href = a && a.getAttribute('href');
+        if (href) {
+          const url = new URL(href, location.href).href;
+          if (/^https?:\/\//.test(url)) link = url;
+        }
+      } catch {
+        link = null;
+      }
+
+      let image = null;
+      try {
+        const media = t.closest(SERVICE.media || 'img');
+        const src = media ? mediaSource(media) : null;
+        if (src && /^https?:\/\//.test(src)) image = imageCandidates(src)[0];
+      } catch {
+        image = null;
+      }
+
+      e.preventDefault();
+      ipcRenderer.send('col:context', { post: postPermalink(t), link, image });
+    },
+    true
+  );
+}
+
 function reportAuthState() {
   try {
     let posts = 0;
@@ -433,6 +510,7 @@ function boot() {
   setInterval(scheduleScan, 15000);
 
   setupMediaExpand();
+  setupContextMenu();
 
   // 描画が遅いサイトがあるので、間隔を空けて数回報告する。
   reportAuthState();

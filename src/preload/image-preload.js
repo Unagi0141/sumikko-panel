@@ -5,6 +5,8 @@ const { ipcRenderer, contextBridge } = require('electron');
 contextBridge.exposeInMainWorld('viewer', {
   /** 閉じる。 */
   close: () => ipcRenderer.send('image:close'),
+  /** 既定のブラウザで開く。開いてよい URL かはメイン側で照合する。 */
+  open: (url) => ipcRenderer.send('image:open', { url }),
   /** 表示する画像が差し替わったときに呼ばれる。 */
   onShow: (fn) => ipcRenderer.on('image:show', (_e, payload) => fn(payload)),
 });
