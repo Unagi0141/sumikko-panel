@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
     <title>すみっこパネル</title>
     <style>
       html,
@@ -12,17 +12,58 @@
         overflow: hidden;
         background: transparent;
       }
-      /* 自動的に隠しているときに画面端へ残す目印。ここにカーソルを寄せると戻る。 */
+
+      /* 自動的に隠しているときに画面端へ残す目印。ここにカーソルを寄せると戻る。
+         色はテーマに合わせる。--accent は main から渡された値が入る。 */
       body {
+        --accent: #60a5fa;
         background: linear-gradient(
           to bottom,
-          rgba(96, 165, 250, 0) 0%,
-          rgba(96, 165, 250, 0.55) 12%,
-          rgba(96, 165, 250, 0.55) 88%,
-          rgba(96, 165, 250, 0) 100%
+          transparent 0%,
+          var(--accent) 12%,
+          var(--accent) 88%,
+          transparent 100%
         );
+        opacity: 0.55;
+      }
+
+      @property --accent {
+        syntax: "<color>";
+        inherits: true;
+        initial-value: #60a5fa;
+      }
+
+      @keyframes tld-rainbow {
+        0% { --accent: #ff5470; }
+        16% { --accent: #ff9f45; }
+        33% { --accent: #ffe14d; }
+        50% { --accent: #4ade80; }
+        66% { --accent: #38bdf8; }
+        83% { --accent: #a78bfa; }
+        100% { --accent: #ff5470; }
+      }
+
+      body.rainbow {
+        animation: tld-rainbow var(--rainbow-sec, 8s) linear infinite;
       }
     </style>
   </head>
-  <body></body>
+  <body>
+    <script>
+      // 色は ?accent=%23xxxxxx&mode=solid|rainbow&sec=8 で受け取る。
+      // 値は main 側（store.js）で #rgb / #rrggbb だけに絞ってある。
+      (() => {
+        const q = new URLSearchParams(location.search);
+        const accent = q.get('accent') || '';
+        const body = document.body;
+        if (/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(accent)) {
+          body.style.setProperty('--accent', accent);
+        }
+        if (q.get('mode') === 'rainbow') {
+          body.style.setProperty('--rainbow-sec', (Number(q.get('sec')) || 8) + 's');
+          body.classList.add('rainbow');
+        }
+      })();
+    </script>
+  </body>
 </html>

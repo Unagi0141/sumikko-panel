@@ -314,6 +314,13 @@ const s = {
   width: document.getElementById('set-width'),
   widthOut: document.getElementById('set-width-out'),
   compact: document.getElementById('set-compact'),
+  accent: document.getElementById('set-accent'),
+  accentPresets: document.getElementById('accent-presets'),
+  rainbow: document.getElementById('set-rainbow'),
+  rainbowSpeed: document.getElementById('set-rainbow-speed'),
+  rainbowSpeedOut: document.getElementById('set-rainbow-speed-out'),
+  rainbowSpeedRow: document.getElementById('row-rainbow-speed'),
+  rainbowWarn: document.getElementById('rainbow-warn'),
   reserve: document.getElementById('set-reserve'),
   fullscreen: document.getElementById('set-fullscreen'),
   onTop: document.getElementById('set-ontop'),
@@ -354,9 +361,60 @@ async function renderDisplays() {
   s.display.value = state.displayId === null ? '' : String(state.displayId);
 }
 
+// よく使いそうな色を並べておく。色の選択画面を開かずに済ませるため。
+const ACCENT_PRESETS = [
+  ['#60a5fa', '青'],
+  ['#4ade80', '緑'],
+  ['#f472b6', '桃'],
+  ['#fb923c', '橙'],
+  ['#a78bfa', '紫'],
+  ['#e2e8f0', '白'],
+];
+
+/** テーマを画面に当てる。虹色のときは CSS のアニメーションに任せる。 */
+function applyTheme(theme) {
+  const t = theme || {};
+  const root = document.documentElement;
+  const rainbow = t.mode === 'rainbow';
+
+  root.classList.toggle('rainbow', rainbow);
+  root.style.setProperty('--rainbow-sec', (Number(t.speedSec) || 8) + 's');
+
+  // 虹色のときに直接指定を残すと、どちらが勝つか読みにくい。外しておく。
+  if (rainbow) root.style.removeProperty('--accent');
+  else root.style.setProperty('--accent', t.accent || '#60a5fa');
+}
+
+function renderAccentPresets() {
+  if (s.accentPresets.childElementCount) return;
+  for (const [color, label] of ACCENT_PRESETS) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.style.background = color;
+    b.addEventListener('click', () => patchGlobal({ theme: { ...state.theme, accent: color } }));
+    s.accentPresets.appendChild(b);
+  }
+}
+
 function renderSettings() {
   if (!state) return;
   renderDisplays();
+  renderAccentPresets();
+
+  const theme = state.theme || {};
+  const rainbow = theme.mode === 'rainbow';
+  s.accent.value = theme.accent || '#60a5fa';
+  s.accent.disabled = rainbow;
+  s.rainbow.checked = rainbow;
+  s.rainbowSpeed.value = String(theme.speedSec || 8);
+  s.rainbowSpeedOut.textContent = `${theme.speedSec || 8} 秒`;
+  s.rainbowSpeedRow.hidden = !rainbow;
+  s.rainbowWarn.textContent = rainbow
+    ? '色が変わり続けるあいだ、画面を塗り直し続けます。実測で CPU 1 コアの 5% ほどを使い続けます（単色なら 0.5%）。常駐アプリなので、ノート PC を電池で使うときは切っておくのが無難です。'
+    : '';
+  applyTheme(theme);
 
   s.edge.value = state.edge;
   s.layout.value = state.layout;
@@ -798,6 +856,24 @@ s.width.addEventListener('input', () => {
   s.widthOut.textContent = `${s.width.value} px`;
 });
 s.width.addEventListener('change', () => patchGlobal({ width: Number(s.width.value) }));
+s.accent.addEventListener('input', () => {
+  // つまみを動かしている最中は画面だけ追従させ、保存は離したときに 1 回。
+  applyTheme({ ...state.theme, mode: 'solid', accent: s.accent.value });
+});
+s.accent.addEventListener('change', () =>
+  patchGlobal({ theme: { ...state.theme, mode: 'solid', accent: s.accent.value } })
+);
+s.rainbow.addEventListener('change', () =>
+  patchGlobal({ theme: { ...state.theme, mode: s.rainbow.checked ? 'rainbow' : 'solid' } })
+);
+s.rainbowSpeed.addEventListener('input', () => {
+  s.rainbowSpeedOut.textContent = `${s.rainbowSpeed.value} 秒`;
+  applyTheme({ ...state.theme, speedSec: Number(s.rainbowSpeed.value) });
+});
+s.rainbowSpeed.addEventListener('change', () =>
+  patchGlobal({ theme: { ...state.theme, speedSec: Number(s.rainbowSpeed.value) } })
+);
+
 s.compact.addEventListener('change', async () => {
   await patchGlobal({ compact: s.compact.checked });
   renderColumns();

@@ -1,3 +1,41 @@
+/* --accent を色として登録しておくと、アニメーションで滑らかに移り変わる。
+   登録しないと途中の色が作れず、カクッと切り替わるだけになる。 */
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #60a5fa;
+}
+
+/* ゲーミング PC のような虹色。設定で選んだときだけ付く。
+   ここを回している間は、--accent を使っている場所が毎フレーム塗り直される。 */
+@keyframes tld-rainbow {
+  0% {
+    --accent: #ff5470;
+  }
+  16% {
+    --accent: #ff9f45;
+  }
+  33% {
+    --accent: #ffe14d;
+  }
+  50% {
+    --accent: #4ade80;
+  }
+  66% {
+    --accent: #38bdf8;
+  }
+  83% {
+    --accent: #a78bfa;
+  }
+  100% {
+    --accent: #ff5470;
+  }
+}
+
+html.rainbow {
+  animation: tld-rainbow var(--rainbow-sec, 8s) linear infinite;
+}
+
 :root {
   --bg: #0f1114;
   --bg-raised: #171b21;
@@ -565,4 +603,43 @@ input[readonly] {
 
 .grow {
   flex: 1;
+}
+
+/* --- テーマの色 ---------------------------------------------------------- */
+
+input[type="color"] {
+  width: 42px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-raised);
+  cursor: pointer;
+}
+
+.swatches {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.swatches button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.swatches button:hover {
+  border-color: var(--text-dim);
+}
+
+/* 虹色のときは、警告と一周時間だけを目立たせる */
+#rainbow-warn:empty {
+  display: none;
+}
+
+#rainbow-warn {
+  color: #f2c14e;
 }

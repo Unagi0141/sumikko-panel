@@ -108,6 +108,38 @@
         </fieldset>
 
         <fieldset>
+          <legend>テーマの色</legend>
+
+          <label class="row">
+            <span>色</span>
+            <span class="inline">
+              <input id="set-accent" type="color" />
+              <span id="accent-presets" class="swatches"></span>
+            </span>
+          </label>
+
+          <label class="row checkbox">
+            <input id="set-rainbow" type="checkbox" />
+            <span>虹色にする（ゲーミング）</span>
+          </label>
+
+          <label class="row" id="row-rainbow-speed">
+            <span>一周する時間</span>
+            <span class="inline">
+              <input id="set-rainbow-speed" type="range" min="2" max="30" step="1" />
+              <output id="set-rainbow-speed-out"></output>
+            </span>
+          </label>
+
+          <p class="hint" id="rainbow-warn"></p>
+
+          <p class="hint">
+            新着の印、読み込み中の表示、境界線をつまんだとき、入力欄の枠などに使う色です。
+            タイムラインそのものの配色は、各サービス側の設定に従います。
+          </p>
+        </fieldset>
+
+        <fieldset>
           <legend>新着の通知音</legend>
 
           <label class="row checkbox">

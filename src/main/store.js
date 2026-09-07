@@ -28,6 +28,13 @@ const DEFAULTS = {
   liveMinIntervalMs: 20000,  // 連続で押さないための下限
   staleReloadMin: 30,        // 何分更新が無ければ再読み込みするか（0 で無効）
 
+  // 見た目の色。solid はその 1 色、rainbow は虹色に巡回する。
+  theme: {
+    mode: 'solid',      // 'solid' | 'rainbow'
+    accent: '#60a5fa',
+    speedSec: 8,        // rainbow のとき、一周にかける秒数
+  },
+
   sound: {
     enabled: true,
     volume: 0.4,
@@ -132,6 +139,16 @@ function normalize(state) {
   state.liveMinIntervalMs = clamp(Math.round(num(state.liveMinIntervalMs, DEFAULTS.liveMinIntervalMs)), 5000, 300000);
   state.staleReloadMin = clamp(Math.round(num(state.staleReloadMin, DEFAULTS.staleReloadMin)), 0, 720);
   state.displayId = Number.isFinite(Number(state.displayId)) && state.displayId !== null ? Number(state.displayId) : null;
+
+  const theme = state.theme && typeof state.theme === 'object' ? state.theme : {};
+  state.theme = {
+    mode: theme.mode === 'rainbow' ? 'rainbow' : 'solid',
+    // 想定外の文字列を CSS へ渡さない。#rgb / #rrggbb だけ通す。
+    accent: /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(theme.accent || ''))
+      ? String(theme.accent)
+      : DEFAULTS.theme.accent,
+    speedSec: clamp(num(theme.speedSec, DEFAULTS.theme.speedSec), 2, 60),
+  };
 
   const sound = state.sound && typeof state.sound === 'object' ? state.sound : {};
   state.sound = {

@@ -467,6 +467,17 @@ function applyAutoHide() {
   }
 }
 
+/** 細帯にテーマを渡して読み込ませる。色を変えたらここを呼び直す。 */
+function loadStrip() {
+  if (!strip || strip.isDestroyed()) return;
+  const t = state().theme || {};
+  const search =
+    'accent=' + encodeURIComponent(t.accent || '#60a5fa') +
+    '&mode=' + (t.mode === 'rainbow' ? 'rainbow' : 'solid') +
+    '&sec=' + encodeURIComponent(String(t.speedSec || 8));
+  strip.loadFile(path.join(__dirname, '..', 'renderer', 'strip.html'), { search });
+}
+
 function ensureStrip() {
   if (strip && !strip.isDestroyed()) return strip;
   strip = new BrowserWindow({
@@ -484,7 +495,7 @@ function ensureStrip() {
     webPreferences: { sandbox: true },
   });
   strip.setAlwaysOnTop(true, 'screen-saver');
-  strip.loadFile(path.join(__dirname, '..', 'renderer', 'strip.html'));
+  loadStrip();
   strip.on('closed', () => {
     strip = null;
   });
@@ -725,6 +736,8 @@ function updateState(partial) {
     applyGeometry();
   }
   if (before.autoHide !== next.autoHide) applyAutoHide();
+  // 細帯は別ウインドウなので、テーマを変えたら読み込み直して色を合わせる
+  if (JSON.stringify(before.theme) !== JSON.stringify(next.theme)) loadStrip();
   if (before.toggleShortcut !== next.toggleShortcut) registerShortcut();
   if (before.launchAtLogin !== next.launchAtLogin) applyLaunchAtLogin(next.launchAtLogin);
   if (partial.columns && columns) columns.sync(next.columns);
