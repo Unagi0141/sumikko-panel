@@ -62,13 +62,21 @@ html.rainbow {
   --line-accent-soft: color-mix(in srgb, var(--accent) 18%, var(--border));
   --wash-accent: color-mix(in srgb, var(--accent) 10%, transparent);
 
-  /* バーの地色。混ぜずにテーマ色そのものを使う。
-     地色を薄めて読みやすさを稼ぐのではなく、文字側を白抜き黒縁にして
-     どんな色の上でも読めるようにしている（--on-bar-edge）。 */
+  /* バーの見た目。設定の「色の強さ」でこの一式を差し替える。
+     既定（くっきり）は、地色をテーマ色そのものにして、
+     読みやすさは文字の白抜き黒縁で担保する。 */
   --bar-accent: var(--accent);
   --bar-accent-soft: color-mix(in srgb, var(--accent) 76%, var(--bg-raised));
   --on-bar: #ffffff;
+  --on-bar-icon: #ffffff;
   --on-bar-edge: rgba(0, 0, 0, 0.9);
+  --bar-hover: rgba(0, 0, 0, 0.28);
+  --bar-shadow:
+    0 0 2px var(--on-bar-edge),
+    1px 1px 0 var(--on-bar-edge),
+    -1px 1px 0 var(--on-bar-edge),
+    1px -1px 0 var(--on-bar-edge),
+    -1px -1px 0 var(--on-bar-edge);
   --toolbar-h: 30px;
   --head-h: 24px;
   --splitter: 5px;
@@ -722,19 +730,13 @@ input[type="color"] {
 #toolbar,
 .col-head,
 .settings-head {
-  --edge: var(--on-bar-edge);
-  text-shadow:
-    0 0 2px var(--edge),
-    1px 1px 0 var(--edge),
-    -1px 1px 0 var(--edge),
-    1px -1px 0 var(--edge),
-    -1px -1px 0 var(--edge);
+  text-shadow: var(--bar-shadow);
 }
 
 #toolbar .icon-btn,
 .col-head .icon-btn,
 .settings-head .icon-btn {
-  color: var(--on-bar);
+  color: var(--on-bar-icon);
   text-shadow: inherit;
 }
 
@@ -742,10 +744,47 @@ input[type="color"] {
 .col-head .icon-btn:hover,
 .settings-head .icon-btn:hover {
   color: var(--on-bar);
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--bar-hover);
 }
 
 #toolbar .drag-handle {
-  color: var(--on-bar);
+  color: var(--on-bar-icon);
   opacity: 0.85;
+}
+
+/* --- 色の強さ -------------------------------------------------------------
+   既定は「くっきり」。以前の落ち着いた見た目も選べるように残してある。
+   -------------------------------------------------------------------------- */
+
+/* ほどほど: 地色にテーマ色を混ぜる。文字の縁は付けない。
+   45% は、純白の文字がどのテーマ色でも 4.5:1 を下回らない上限。 */
+html[data-strength="medium"] {
+  --bar-accent: color-mix(in srgb, var(--accent) 45%, var(--bg-raised));
+  --bar-accent-soft: color-mix(in srgb, var(--accent) 30%, var(--bg-raised));
+  --on-bar-icon: color-mix(in srgb, var(--on-bar) 82%, transparent);
+  --bar-hover: rgba(255, 255, 255, 0.16);
+  --bar-shadow: none;
+}
+
+/* 「ほどほど」の 45% は暗い地色に混ぜる前提で決めた値。
+   明るい地では淡い色になり、白い文字だと 1.09:1 で読めない。
+   文字を本文色に戻すと 10.05:1 になるので、明るいときはそちらを使う。 */
+@media (prefers-color-scheme: light) {
+  html[data-strength="medium"] {
+    --on-bar: var(--text);
+    --on-bar-icon: var(--text);
+    --bar-hover: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* ひかえめ: バーは塗らず、線にだけ色をのせる。文字も元の色に戻す。 */
+html[data-strength="subtle"] {
+  --bar-accent: var(--bg-raised);
+  --bar-accent-soft: var(--bg-raised);
+  --on-bar: var(--text);
+  --on-bar-icon: var(--text-dim);
+  --bar-hover: var(--bg-hover);
+  --bar-shadow: none;
+  --line-accent: color-mix(in srgb, var(--accent) 40%, var(--border));
+  --line-accent-soft: color-mix(in srgb, var(--accent) 18%, var(--border));
 }

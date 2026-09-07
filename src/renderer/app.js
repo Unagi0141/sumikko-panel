@@ -315,6 +315,7 @@ const s = {
   widthOut: document.getElementById('set-width-out'),
   compact: document.getElementById('set-compact'),
   base: document.getElementById('set-base'),
+  strength: document.getElementById('set-strength'),
   accent: document.getElementById('set-accent'),
   accentPresets: document.getElementById('accent-presets'),
   rainbow: document.getElementById('set-rainbow'),
@@ -400,6 +401,11 @@ function applyTheme(theme) {
   const rainbow = t.mode === 'rainbow';
 
   const sec = Number(t.speedSec) || 8;
+  // 既定（bold）は属性を付けない。CSS の初期値がそのまま効く。
+  const strength = t.strength || 'bold';
+  if (strength === 'bold') delete root.dataset.strength;
+  else root.dataset.strength = strength;
+
   root.classList.toggle('rainbow', rainbow);
   root.style.setProperty('--rainbow-sec', sec + 's');
 
@@ -434,6 +440,7 @@ function renderSettings() {
   const theme = state.theme || {};
   const rainbow = theme.mode === 'rainbow';
   s.base.value = theme.base || 'dark';
+  s.strength.value = theme.strength || 'bold';
   s.accent.value = theme.accent || '#60a5fa';
   s.accent.disabled = rainbow;
   s.rainbow.checked = rainbow;
@@ -886,6 +893,10 @@ s.width.addEventListener('input', () => {
 s.width.addEventListener('change', () => patchGlobal({ width: Number(s.width.value) }));
 s.base.addEventListener('change', () =>
   patchGlobal({ theme: { ...state.theme, base: s.base.value } })
+);
+
+s.strength.addEventListener('change', () =>
+  patchGlobal({ theme: { ...state.theme, strength: s.strength.value } })
 );
 
 s.accent.addEventListener('input', () => {

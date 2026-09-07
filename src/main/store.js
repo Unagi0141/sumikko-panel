@@ -31,6 +31,7 @@ const DEFAULTS = {
   // 見た目の色。solid はその 1 色、rainbow は虹色に巡回する。
   theme: {
     base: 'dark',       // 'dark' | 'light' | 'system'（タイムライン側の配色も追従する）
+    strength: 'bold',   // 'bold' | 'medium' | 'subtle'（テーマ色をどこまで効かせるか）
     mode: 'solid',      // 'solid' | 'rainbow'
     accent: '#60a5fa',
     speedSec: 8,        // rainbow のとき、一周にかける秒数
@@ -144,6 +145,9 @@ function normalize(state) {
   const theme = state.theme && typeof state.theme === 'object' ? state.theme : {};
   state.theme = {
     base: ['dark', 'light', 'system'].includes(theme.base) ? theme.base : DEFAULTS.theme.base,
+    strength: ['bold', 'medium', 'subtle'].includes(theme.strength)
+      ? theme.strength
+      : DEFAULTS.theme.strength,
     mode: theme.mode === 'rainbow' ? 'rainbow' : 'solid',
     // 想定外の文字列を CSS へ渡さない。#rgb / #rrggbb だけ通す。
     accent: /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(theme.accent || ''))
