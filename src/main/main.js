@@ -63,6 +63,70 @@ function errorLogPath() {
   }
 }
 
+const ISSUE_URL = 'https://github.com/Unagi0141/sumikko-panel/issues/new';
+// URL に載せる本文の上限。長すぎるとブラウザや GitHub 側で切れるため、
+// 記録の末尾だけを載せ、全文は貼り付け用にクリップボードへ入れる。
+const REPORT_TAIL = 3500;
+
+/**
+ * 記録に紛れる個人の名前を伏せる。
+ * 例外の行にはインストール先やユーザーフォルダの絶対パスが入る。
+ * これをそのまま公開の場所へ貼ると、Windows のユーザー名まで出てしまう。
+ */
+function redact(text) {
+  let out = String(text);
+  try {
+    const user = require('os').userInfo().username;
+    if (user && user.length > 1) out = out.split(user).join('<ユーザー名>');
+  } catch {
+    // 取れなければそのまま
+  }
+  return out;
+}
+
+/** 記録の状態と、報告に載せる本文を作る。 */
+function buildReport() {
+  const file = errorLogPath();
+  let log = '';
+  try {
+    log = require('fs').readFileSync(file, 'utf8');
+  } catch {
+    log = '';
+  }
+
+  const head = [
+    '## 何が起きましたか',
+    '',
+    '（ここに書いてください。「何をしたら」「何が起きたか」が分かると助かります）',
+    '',
+    '## 環境',
+    '',
+    '- すみっこパネル: ' + app.getVersion(),
+    '- Windows: ' + require('os').release(),
+    '- 画面: ' + screen.getAllDisplays().map((d) => `${d.bounds.width}x${d.bounds.height}@${d.scaleFactor}`).join(', '),
+    '',
+  ];
+
+  if (!log.trim()) {
+    head.push('## 不具合の記録', '', '記録はありませんでした（例外は起きていません）。');
+    return { hasLog: false, body: head.join('\n'), full: '' };
+  }
+
+  const clean = redact(log);
+  const tail = clean.length > REPORT_TAIL ? clean.slice(-REPORT_TAIL) : clean;
+  head.push(
+    '## 不具合の記録',
+    '',
+    clean.length > REPORT_TAIL ? '（末尾のみ。全文はクリップボードに入れてあります）' : '',
+    '',
+    '```',
+    tail.trim(),
+    '```',
+    ''
+  );
+  return { hasLog: true, body: head.join('\n'), full: clean };
+}
+
 function recordError(kind, err) {
   const text = `[${new Date().toISOString()}] ${kind}: ${(err && err.stack) || err}
 `;
@@ -1045,6 +1109,35 @@ function registerIpc() {
       isPrimary: d.id === primaryId,
       isActive: d.id === active,
     }));
+  });
+
+  ipcMain.handle('report:get', () => {
+    const r = buildReport();
+    return { hasLog: r.hasLog, path: errorLogPath(), bytes: r.full.length };
+  });
+
+  ipcMain.handle('report:open-folder', () => {
+    const file = errorLogPath();
+    try {
+      if (require('fs').existsSync(file)) shell.showItemInFolder(file);
+      else shell.openPath(app.getPath('userData'));
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  // 送信先は持たない。GitHub の報告画面を、本文を入れた状態で開くだけ。
+  // 実際に送るかどうかは、その画面で本人が決める。
+  ipcMain.handle('report:send', () => {
+    const r = buildReport();
+    if (r.full) clipboard.writeText(r.full);
+    const url =
+      ISSUE_URL +
+      '?title=' + encodeURIComponent('［不具合］') +
+      '&body=' + encodeURIComponent(r.body);
+    shell.openExternal(url);
+    return { ok: true, hasLog: r.hasLog };
   });
 
   ipcMain.handle('datadir:get', () => ({

@@ -315,6 +315,9 @@ const s = {
   widthOut: document.getElementById('set-width-out'),
   compact: document.getElementById('set-compact'),
   base: document.getElementById('set-base'),
+  reportState: document.getElementById('report-state'),
+  btnReport: document.getElementById('btn-report'),
+  btnReportFolder: document.getElementById('btn-report-folder'),
   strength: document.getElementById('set-strength'),
   accent: document.getElementById('set-accent'),
   accentPresets: document.getElementById('accent-presets'),
@@ -436,6 +439,7 @@ function renderSettings() {
   if (!state) return;
   renderDisplays();
   renderAccentPresets();
+  refreshReportState();
 
   const theme = state.theme || {};
   const rainbow = theme.mode === 'rainbow';
@@ -891,6 +895,27 @@ s.width.addEventListener('input', () => {
   s.widthOut.textContent = `${s.width.value} px`;
 });
 s.width.addEventListener('change', () => patchGlobal({ width: Number(s.width.value) }));
+/** 記録があるかどうかを画面に出す。 */
+async function refreshReportState() {
+  try {
+    const r = await window.dock.getReport();
+    s.reportState.textContent = r.hasLog
+      ? `不具合の記録があります（${r.bytes.toLocaleString()} 文字）。報告に添えられます。`
+      : '不具合の記録はありません。いまのところ何も起きていません。';
+    s.reportState.className = r.hasLog ? 'hint warn' : 'hint';
+  } catch {
+    s.reportState.textContent = '';
+  }
+}
+
+s.btnReport.addEventListener('click', async () => {
+  await window.dock.sendReport();
+});
+
+s.btnReportFolder.addEventListener('click', async () => {
+  await window.dock.openReportFolder();
+});
+
 s.base.addEventListener('change', () =>
   patchGlobal({ theme: { ...state.theme, base: s.base.value } })
 );

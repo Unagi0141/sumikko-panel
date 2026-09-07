@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('dock', {
     ipcRenderer.invoke('credentials:set', { service, username, password }),
   clearCredentials: (service) => ipcRenderer.invoke('credentials:clear', service),
 
+  // 不具合の記録
+  getReport: () => ipcRenderer.invoke('report:get'),
+  openReportFolder: () => ipcRenderer.invoke('report:open-folder'),
+  sendReport: () => ipcRenderer.invoke('report:send'),
+
   getDataDir: () => ipcRenderer.invoke('datadir:get'),
   chooseDataDir: () => ipcRenderer.invoke('datadir:choose'),
   setDataDir: (target, move) => ipcRenderer.invoke('datadir:set', { target, move }),
