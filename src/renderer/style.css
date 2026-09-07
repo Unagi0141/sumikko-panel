@@ -48,9 +48,16 @@ html.rainbow {
 
   /* テーマ色を混ぜた線と面。--accent が変われば、ここも一緒に変わる。
      生の色をそのまま線に使うと強すぎるので、既定の線色へ少しだけ混ぜる。 */
-  --line-accent: color-mix(in srgb, var(--accent) 40%, var(--border));
+  --line-accent: color-mix(in srgb, var(--accent) 65%, var(--border));
   --line-accent-soft: color-mix(in srgb, var(--accent) 18%, var(--border));
   --wash-accent: color-mix(in srgb, var(--accent) 10%, transparent);
+
+  /* バーの地色。線ではなく面をテーマ色にするためのもの。
+     割合は、文字を純白にしたときの読みやすさから決めた。
+     45% なら、見本 6 色と虹色 6 色のどれでも 4.51:1 を下回らない。 */
+  --bar-accent: color-mix(in srgb, var(--accent) 45%, var(--bg-raised));
+  --bar-accent-soft: color-mix(in srgb, var(--accent) 30%, var(--bg-raised));
+  --on-bar: #ffffff;
   --toolbar-h: 30px;
   --head-h: 24px;
   --splitter: 5px;
@@ -97,7 +104,8 @@ body {
   justify-content: space-between;
   flex: 0 0 var(--toolbar-h);
   padding-right: 2px;
-  background: var(--bg-raised);
+  background: var(--bar-accent);
+  color: var(--on-bar);
   border-bottom: 1px solid var(--line-accent);
 }
 
@@ -199,7 +207,8 @@ body.layout-column .col.collapsed {
   gap: 4px;
   flex: 0 0 var(--head-h);
   padding: 0 2px 0 5px;
-  background: var(--bg-raised);
+  background: var(--bar-accent-soft);
+  color: var(--on-bar);
   border-bottom: 1px solid var(--line-accent-soft);
   overflow: hidden;
 }
@@ -362,6 +371,8 @@ body.resizing-column {
   align-items: center;
   justify-content: space-between;
   padding: 6px 6px 6px 10px;
+  background: var(--bar-accent);
+  color: var(--on-bar);
   border-bottom: 1px solid var(--line-accent);
 }
 
@@ -651,4 +662,23 @@ input[type="color"] {
 
 #rainbow-warn {
   color: #f2c14e;
+}
+
+/* 塗ったバーの上では、アイコンと文字を白へ寄せる。
+   地色が明るくなるので、既定の淡い灰色では沈んでしまう。 */
+#toolbar .icon-btn,
+.col-head .icon-btn,
+.settings-head .icon-btn {
+  color: color-mix(in srgb, var(--on-bar) 82%, transparent);
+}
+
+#toolbar .icon-btn:hover,
+.col-head .icon-btn:hover,
+.settings-head .icon-btn:hover {
+  color: var(--on-bar);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+#toolbar .drag-handle {
+  color: color-mix(in srgb, var(--on-bar) 60%, transparent);
 }
