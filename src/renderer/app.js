@@ -314,6 +314,7 @@ const s = {
   width: document.getElementById('set-width'),
   widthOut: document.getElementById('set-width-out'),
   compact: document.getElementById('set-compact'),
+  base: document.getElementById('set-base'),
   accent: document.getElementById('set-accent'),
   accentPresets: document.getElementById('accent-presets'),
   rainbow: document.getElementById('set-rainbow'),
@@ -432,6 +433,7 @@ function renderSettings() {
 
   const theme = state.theme || {};
   const rainbow = theme.mode === 'rainbow';
+  s.base.value = theme.base || 'dark';
   s.accent.value = theme.accent || '#60a5fa';
   s.accent.disabled = rainbow;
   s.rainbow.checked = rainbow;
@@ -882,6 +884,10 @@ s.width.addEventListener('input', () => {
   s.widthOut.textContent = `${s.width.value} px`;
 });
 s.width.addEventListener('change', () => patchGlobal({ width: Number(s.width.value) }));
+s.base.addEventListener('change', () =>
+  patchGlobal({ theme: { ...state.theme, base: s.base.value } })
+);
+
 s.accent.addEventListener('input', () => {
   // つまみを動かしている最中は画面だけ追従させ、保存は離したときに 1 回。
   applyTheme({ ...state.theme, mode: 'solid', accent: s.accent.value });

@@ -11,6 +11,7 @@ const {
   Tray,
   Menu,
   nativeImage,
+  nativeTheme,
   dialog,
 } = require('electron');
 
@@ -467,6 +468,20 @@ function applyAutoHide() {
   }
 }
 
+/**
+ * 配色（暗い / 明るい / OS に合わせる）を反映する。
+ *
+ * themeSource を変えると、このアプリが持つすべての画面の
+ * prefers-color-scheme が変わる。自分の UI だけでなく、
+ * 埋め込んだタイムライン側にも同じ判定が渡る。
+ * ただし効くのは、そのサービスが「システム設定に合わせる」に
+ * なっている場合だけ。配色をアカウント側に持つサービスは動かせない。
+ */
+function applyColorBase() {
+  const base = (state().theme || {}).base;
+  nativeTheme.themeSource = ['dark', 'light', 'system'].includes(base) ? base : 'dark';
+}
+
 /** 細帯にテーマを渡して読み込ませる。色を変えたらここを呼び直す。 */
 function loadStrip() {
   if (!strip || strip.isDestroyed()) return;
@@ -738,6 +753,7 @@ function updateState(partial) {
   if (before.autoHide !== next.autoHide) applyAutoHide();
   // 細帯は別ウインドウなので、テーマを変えたら読み込み直して色を合わせる
   if (JSON.stringify(before.theme) !== JSON.stringify(next.theme)) loadStrip();
+  if ((before.theme || {}).base !== (next.theme || {}).base) applyColorBase();
   if (before.toggleShortcut !== next.toggleShortcut) registerShortcut();
   if (before.launchAtLogin !== next.launchAtLogin) applyLaunchAtLogin(next.launchAtLogin);
   if (partial.columns && columns) columns.sync(next.columns);
@@ -1089,6 +1105,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     registerIpc();
+    applyColorBase();
 
     win32.on('ready', () => {
       applyGeometry();

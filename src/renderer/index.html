@@ -111,6 +111,15 @@
           <legend>テーマの色</legend>
 
           <label class="row">
+            <span>配色</span>
+            <select id="set-base">
+              <option value="dark">暗い</option>
+              <option value="light">明るい</option>
+              <option value="system">OS の設定に合わせる</option>
+            </select>
+          </label>
+
+          <label class="row">
             <span>色</span>
             <span class="inline">
               <input id="set-accent" type="color" />
@@ -134,8 +143,10 @@
           <p class="hint" id="rainbow-warn"></p>
 
           <p class="hint">
-            新着の印、読み込み中の表示、境界線をつまんだとき、入力欄の枠などに使う色です。
-            タイムラインそのものの配色は、各サービス側の設定に従います。
+            色はバー・枠・新着の印・読み込み中の表示などに使います。
+            配色（暗い / 明るい）はタイムライン側にも渡りますが、効くのは、そのサービスが
+            「システム設定に合わせる」になっている場合だけです。X のように配色をアカウント側に
+            持つサービスは、そちらの設定が優先されます。
           </p>
         </fieldset>
 
