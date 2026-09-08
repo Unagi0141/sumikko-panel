@@ -1,7 +1,7 @@
 {
   "name": "sumikko-panel",
   "productName": "すみっこパネル",
-  "version": "0.9.13",
+  "version": "0.9.14",
   "private": true,
   "description": "任意の Web ページを画面端のドックに常駐させる Windows アプリ",
   "author": "kto28",
@@ -13,6 +13,8 @@
     "shortcut": "node tools/make-shortcut.js",
     "shortcut:remove": "node tools/make-shortcut.js --remove",
     "pack": "electron-builder --dir",
+    "check:version": "node tools/check-version.js",
+    "predist": "node tools/check-version.js",
     "dist": "electron-builder --win",
     "page": "node tools/preview-page.js",
     "page:edit": "node tools/preview-page.js --edit",
