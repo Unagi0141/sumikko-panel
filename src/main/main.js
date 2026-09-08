@@ -26,6 +26,8 @@ const services = require('./services');
 const features = require('./features');
 // 無効なときは読み込まない。積んでいないことをはっきりさせるため。
 const credentials = features.credentials ? require('./credentials') : null;
+// 逆に、無効なときにだけ要る。以前の版が保存した分の後始末をする。
+const credentialsLegacy = features.credentials ? null : require('./credentials-legacy');
 const { ColumnManager } = require('./columns');
 const { Win32Bridge, hwndOf } = require('./win32');
 const updater = require('./updater');
@@ -1269,6 +1271,18 @@ if (!app.requestSingleInstanceLock()) {
     services.seed();
     startStaleWatch();
     updater.start(onUpdateState);
+
+    // 以前の版（v0.9.4〜v0.9.13）が保存したログイン情報が残っていれば、
+    // 消してよいか尋ねる。少し待つのは、何も出ていない画面へいきなり
+    // ダイアログだけを出さないため。断られたら次の起動でまた尋ねる。
+    if (credentialsLegacy) {
+      setTimeout(() => {
+        const parent = win && !win.isDestroyed() && win.isVisible() ? win : null;
+        credentialsLegacy.offerRemoval(parent).catch((err) => {
+          console.error('[main] ログイン情報の後始末に失敗しました:', err?.message || err);
+        });
+      }, 1500);
+    }
 
     // 読み込み時に補われた既定値（新項目や移行結果）をファイルにも書き戻す。
     // これをしないと、設定ファイルの中身と実際の動作が食い違って混乱のもとになる。
