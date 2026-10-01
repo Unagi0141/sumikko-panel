@@ -83,6 +83,31 @@ function readRaw() {
 
 const ID_OK = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 
+/**
+ * 画像を大きく開くときの候補の規則（image.candidates）を読む。
+ *
+ * [パターン, 置換] の組を上から当て、表示中の縮小版から大きい版の URL を作る。
+ * v0.9.2 で services.json に規則を足したが、ここで拾っていなかったため、
+ * カラムに渡る定義から落ちていて、どのサービスでも一度も効いていなかった
+ * （2026-09-16、mixi2 の「拡大しても小さい」で判明）。
+ * 正規表現として読めない組は、その組だけ読み飛ばす。
+ */
+function imageRules(raw) {
+  const list = raw && typeof raw === 'object' && Array.isArray(raw.candidates) ? raw.candidates : [];
+  const candidates = [];
+  for (const pair of list) {
+    if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== 'string' || typeof pair[1] !== 'string') continue;
+    try {
+      new RegExp(pair[0]);
+    } catch {
+      console.warn('[services] image.candidates のパターンが読めないので読み飛ばします:', pair[0]);
+      continue;
+    }
+    candidates.push([pair[0], pair[1]]);
+  }
+  return candidates.length ? { candidates } : null;
+}
+
 /** 足りない項目を埋め、おかしな値を弾く。壊れている定義はその 1 件だけ読み飛ばす。 */
 function normalizeOne(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -110,6 +135,7 @@ function normalizeOne(raw) {
       key: post.key && typeof post.key === 'object' ? post.key : { text: true },
     },
     media: String(raw.media || 'article img, [role="article"] img'),
+    image: imageRules(raw.image),
     live: live && live.key ? { key: String(live.key), pending: String(live.pending || '') } : null,
     loggedOut: {
       loggedIn: arr(out.loggedIn),

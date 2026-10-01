@@ -85,6 +85,13 @@
         "key": { "selector": "a[href*=\"/posts/\"], a[href*=\"/p/\"], time", "attr": "href", "fallbackAttr": "datetime" }
       },
       "media": "article img, [role=\"article\"] img, article video, [role=\"article\"] video",
+
+      "image": {
+        "candidates": [
+          ["^(https://media\\.mixi\\.social/.+/i/[^/?#]+/)image_s\\.webp", "$1image.webp"]
+        ],
+        "note": "タイムラインの image_s.webp は 171×96 に切り抜いた縮小版。同じ場所の image.webp が元の画像。開けなければ表示中のものに戻る"
+      },
       "live": null,
       "loggedOut": {
         "loggedIn": ["article", "[role=\"article\"]", "[role=\"feed\"]"],
