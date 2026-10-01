@@ -435,24 +435,42 @@ function setupMediaExpand() {
  * ------------------------------------------------------------------ */
 
 // X のホームは開くたび「おすすめ」に戻る。定義に tab があれば、
-// 指定された見出しのタブが選ばれていないときだけ押して戻す。
+// **開いたときに 1 回だけ**、指定された見出しのタブへ切り替える。
+//
+// 「開いたとき」＝ページの読み込み・読み込み直し（プリロードが作り直される）と、
+// 別の画面からその画面へ移ったとき（SPA なので pathname の変化で見る）。
+// 一度目的のタブになったら、同じ画面にいる間は触らない。利用者が自分で
+// 「おすすめ」を選び直しても押し戻さない（2026-09-16 CEO 室裁定。公開した記載
+// 「フォロー中で開く」より強い動きにしない）。
+//
 // 押しても変わらない作りに変わっていた場合に叩き続けないよう、回数で打ち切る。
 const TAB_MAX_TRIES = 5;
 let tabTries = 0;
 let tabPath = null;
+let tabDone = false;          // この画面では済んだ（切り替わった、または利用者が別のタブを選んだ）
+let tabClickedFrom;           // 最後に押したとき選ばれていた見出し（押していなければ undefined）
+
+function tabLabel(el) {
+  return el ? (el.innerText || el.getAttribute('aria-label') || '').trim() : '';
+}
 
 function keepTab() {
   const rule = SERVICE.tab;
   if (!rule || !rule.labels || !rule.labels.length) return;
 
-  // 画面を移ったら数え直す（SPA なのでプリロードは作り直されない）
+  // 画面を移ったら「開いたとき」として数え直す（SPA なのでプリロードは作り直されない）
   if (tabPath !== location.pathname) {
     tabPath = location.pathname;
     tabTries = 0;
+    tabDone = false;
+    tabClickedFrom = undefined;
   }
 
   // タイムライン以外（個別の投稿や設定画面）では触らない
   if (rule.paths && rule.paths.length && !anyPathMatch(rule.paths)) return;
+
+  // この画面ではもう済んでいる。利用者の選んだタブをそのままにする
+  if (tabDone) return;
 
   let list = document;
   if (rule.container) {
@@ -480,13 +498,19 @@ function keepTab() {
   }
 
   if (!target) return;          // まだ出ていない、または見出しが変わった
-  if (target === selected) {    // もう目的のタブ。数え直して次に備える
-    tabTries = 0;
+  if (target === selected) {    // 目的のタブになった。この画面ではもう触らない
+    tabDone = true;
+    return;
+  }
+  // 押したあと、目的でない別のタブへ選択が移っていれば、利用者が選んだものとして尊重する
+  if (tabClickedFrom !== undefined && tabLabel(selected) !== tabClickedFrom) {
+    tabDone = true;
     return;
   }
   if (tabTries >= TAB_MAX_TRIES) return;
 
   tabTries += 1;
+  tabClickedFrom = tabLabel(selected);
   target.click();
 }
 
