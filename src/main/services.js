@@ -108,6 +108,49 @@ function imageRules(raw) {
   return candidates.length ? { candidates } : null;
 }
 
+/**
+ * 表示するタブの固定（tab）を読む。X のホームを「フォロー中」で開くためのもの。
+ *
+ * image と同じく、ここで拾っていなかったためカラムに渡る定義から落ちていて、
+ * v0.9.4 で公開した「フォロー中で開く」は一度も効いていなかった（2026-09-16 判明）。
+ *
+ * 安全弁を正規化で崩さないこと:
+ *   - paths は「このページでだけ押す」という制限。書いてあるのに 1 つも読めなければ、
+ *     制限の無い規則（どのページでも押す）に化けるので、規則ごと捨てる
+ *   - 押す回数の打ち切り（5 回）はプリロード側にあり、ここでは触らない
+ */
+function tabRule(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const strings = (v) => (Array.isArray(v) ? v.filter((s) => typeof s === 'string' && s) : []);
+
+  const labels = strings(raw.labels);
+  if (!labels.length) return null;
+
+  const given = strings(raw.paths);
+  const paths = given.filter((p) => {
+    try {
+      new RegExp(p);
+      return true;
+    } catch {
+      console.warn('[services] tab.paths のパターンが読めないので読み飛ばします:', p);
+      return false;
+    }
+  });
+  if (Array.isArray(raw.paths) && raw.paths.length && !paths.length) {
+    console.warn('[services] tab.paths が 1 つも読めないため、タブの固定を無効にします');
+    return null;
+  }
+
+  const text = (v) => (typeof v === 'string' && v ? v : null);
+  return {
+    paths,
+    container: text(raw.container),
+    item: text(raw.item),
+    selected: text(raw.selected),
+    labels,
+  };
+}
+
 /** 足りない項目を埋め、おかしな値を弾く。壊れている定義はその 1 件だけ読み飛ばす。 */
 function normalizeOne(raw) {
   if (!raw || typeof raw !== 'object') return null;
@@ -136,6 +179,7 @@ function normalizeOne(raw) {
     },
     media: String(raw.media || 'article img, [role="article"] img'),
     image: imageRules(raw.image),
+    tab: tabRule(raw.tab),
     live: live && live.key ? { key: String(live.key), pending: String(live.pending || '') } : null,
     loggedOut: {
       loggedIn: arr(out.loggedIn),
