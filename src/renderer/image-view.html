@@ -173,10 +173,13 @@
 
         const list = (Array.isArray(sources) ? sources : [sources]).filter(Boolean);
         let i = 0;
+        if (!list.length) window.viewer.report('image.no-sources');
 
         const tryNext = () => {
           if (i >= list.length) {
             message('この画像は開けませんでした。');
+            // 候補がすべて読めなかった。どの段で止まったかを後から確かめられるように残す。
+            if (list.length) window.viewer.report('image.all-candidates-failed', { tried: list.length });
             return;
           }
           const url = list[i++];

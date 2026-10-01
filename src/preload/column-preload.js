@@ -14,6 +14,27 @@
 const { ipcRenderer } = require('electron');
 
 /* ------------------------------------------------------------------ *
+ * 失敗の報告
+ * ------------------------------------------------------------------ */
+
+// このファイルの処理はページの中で動くので、ここで失敗しても主プロセスの
+// error.log には何も残らなかった（2026-09-16、画像の拡大が止まった件で、
+// どの段で止まったのかを確かめられなかった）。
+// 失敗した「段の名前」と形の手がかりだけをメインへ送る。URL や本文は送らない。
+// 書くかどうか・何回まで書くかはメイン側（page-failure.js）が決める。
+function reportFailure(stage, detail) {
+  try {
+    ipcRenderer.send('col:diag', { stage, detail: detail || null });
+  } catch {
+    // 破棄済みなら無視
+  }
+}
+
+function errorMessage(err) {
+  return (err && err.message) || String(err);
+}
+
+/* ------------------------------------------------------------------ *
  * サービス定義の受け取り
  * ------------------------------------------------------------------ */
 
@@ -35,7 +56,9 @@ function loadDefinition() {
     if (!arg) return fallback;
     const parsed = JSON.parse(decodeURIComponent(arg.slice('--tld-service='.length)));
     return parsed && typeof parsed === 'object' ? { ...fallback, ...parsed } : fallback;
-  } catch {
+  } catch (err) {
+    // 汎用の定義で動き続けるが、サービス専用の判定（画像・新着）は効かなくなる
+    reportFailure('definition.parse-failed', { message: errorMessage(err) });
     return fallback;
   }
 }
@@ -164,8 +187,9 @@ function scheduleScan() {
     scanTimer = null;
     try {
       scan();
-    } catch {
-      // 定義が合わなくなっても落とさない
+    } catch (err) {
+      // 定義が合わなくなっても落とさない。ただし記録は残す
+      reportFailure('scan.error', { message: errorMessage(err) });
     }
   }, 400);
 }
@@ -292,40 +316,115 @@ function postPermalink(el) {
   }
 }
 
+/** その要素と祖先に付いている data-testid を、近い順に集める（サービス側の部品名。本文は含まない）。 */
+function testidsAround(el, stop) {
+  const out = [];
+  for (let node = el, depth = 0; node && node !== stop && depth < 10; node = node.parentElement, depth += 1) {
+    const id = node.getAttribute && node.getAttribute('data-testid');
+    if (id) out.push(id.slice(0, 40));
+  }
+  return out;
+}
+
+// 利用者が押した画像のうち、この大きさに満たないもの（アイコン・絵文字）は見ない
+const UNMATCHED_MIN_PX = 80;
+
+/**
+ * 画像らしいものが押されたのに、定義の media に当たらなかったときに記録する。
+ *
+ * サービスがページの作りを変えると、拡大は何も言わずに起動しなくなる。
+ * そのときにこの記録が出る。投稿の中の、ある程度大きい画像だけを対象にする。
+ * リンクカードの画像なども拾うので、testids を見て見分ける。
+ */
+function noteUnmatchedImageClick(target) {
+  if (!target || !target.closest) return;
+
+  let post = null;
+  try {
+    post = target.closest(postSelector());
+  } catch {
+    post = null;
+  }
+  // 投稿の目印そのものが外れたときにも気づけるよう、一般的な記事の枠も見る
+  const scope = post || target.closest('article, [role="article"]');
+  if (!scope) return;
+
+  let img = null;
+  for (let node = target, depth = 0; node && node !== scope && depth < 5; node = node.parentElement, depth += 1) {
+    img = node.matches('img') ? node : node.querySelector('img');
+    if (img) break;
+  }
+  if (!img || !/^https?:/.test(img.currentSrc || img.src || '')) return;
+
+  const r = img.getBoundingClientRect();
+  if (r.width < UNMATCHED_MIN_PX || r.height < UNMATCHED_MIN_PX) return;
+
+  reportFailure('media.unmatched', {
+    postMatched: !!post,
+    testids: testidsAround(img, scope.parentElement),
+    size: Math.round(r.width) + 'x' + Math.round(r.height),
+  });
+}
+
+function onMediaClick(e) {
+  let media = null;
+  try {
+    media = e.target && e.target.closest ? e.target.closest(SERVICE.media) : null;
+  } catch (err) {
+    reportFailure('media.selector-invalid', { message: errorMessage(err) });
+    return;
+  }
+  if (!media) {
+    noteUnmatchedImageClick(e.target);
+    return;
+  }
+
+  // 画像なら、ドックの外に大きく開く。
+  // カラムは細いので、この中で開いても大きくならないため。
+  const src = mediaSource(media);
+  if (src && !/^blob:/.test(src)) {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      ipcRenderer.send('col:image', {
+        sources: imageCandidates(src),
+        post: postPermalink(media),
+      });
+    } catch (err) {
+      reportFailure('media.send-failed', { message: errorMessage(err) });
+    }
+    return;
+  }
+
+  // 画像の枠に当たったのに、表示中の画像を取り出せなかった（動画は除く）
+  if (!src && !media.querySelector('video')) {
+    reportFailure('media.no-source', {
+      tag: media.tagName.toLowerCase(),
+      hasImg: !!media.querySelector('img'),
+      testids: testidsAround(media, null),
+    });
+  }
+
+  // 画像を取り出せないもの（動画など）は、これまで通りその場で開く。
+  if (media.hasAttribute('data-tld-expanded')) return;
+  // 実際に切り詰められている場合だけ横取りする。
+  // そうでないときは投稿を開くなど本来の動作を邪魔しない。
+  if (media.scrollHeight <= media.clientHeight + 4) return;
+  e.preventDefault();
+  e.stopPropagation();
+  media.setAttribute('data-tld-expanded', '1');
+}
+
 function setupMediaExpand() {
   if (!SERVICE.media) return;
   document.addEventListener(
     'click',
     (e) => {
-      let media = null;
       try {
-        media = e.target && e.target.closest ? e.target.closest(SERVICE.media) : null;
-      } catch {
-        return;
+        onMediaClick(e);
+      } catch (err) {
+        reportFailure('media.handler-error', { message: errorMessage(err) });
       }
-      if (!media) return;
-
-      // 画像なら、ドックの外に大きく開く。
-      // カラムは細いので、この中で開いても大きくならないため。
-      const src = mediaSource(media);
-      if (src && !/^blob:/.test(src)) {
-        e.preventDefault();
-        e.stopPropagation();
-        ipcRenderer.send('col:image', {
-          sources: imageCandidates(src),
-          post: postPermalink(media),
-        });
-        return;
-      }
-
-      // 画像を取り出せないもの（動画など）は、これまで通りその場で開く。
-      if (media.hasAttribute('data-tld-expanded')) return;
-      // 実際に切り詰められている場合だけ横取りする。
-      // そうでないときは投稿を開くなど本来の動作を邪魔しない。
-      if (media.scrollHeight <= media.clientHeight + 4) return;
-      e.preventDefault();
-      e.stopPropagation();
-      media.setAttribute('data-tld-expanded', '1');
     },
     true
   );
@@ -471,7 +570,11 @@ function setupContextMenu() {
       }
 
       e.preventDefault();
-      ipcRenderer.send('col:context', { post: postPermalink(t), link, image });
+      try {
+        ipcRenderer.send('col:context', { post: postPermalink(t), link, image });
+      } catch (err) {
+        reportFailure('context.send-failed', { message: errorMessage(err) });
+      }
     },
     true
   );
@@ -496,8 +599,8 @@ function boot() {
   // 最初に並んでいる投稿は「既読」として飲み込み、以降の増分だけを新着とする。
   try {
     scan();
-  } catch {
-    // 無視
+  } catch (err) {
+    reportFailure('scan.error', { message: errorMessage(err) });
   }
   setTimeout(() => {
     armed = true;
@@ -521,22 +624,23 @@ function boot() {
     setTimeout(() => {
       try {
         keepTab();
-      } catch {
-        // 無視
+      } catch (err) {
+        reportFailure('tab.error', { message: errorMessage(err) });
       }
     }, delay);
   }
 
+  // 5 秒ごとに回るので、同じ失敗が続いても記録はメイン側で数回に抑える
   setInterval(() => {
     try {
       checkLive();
-    } catch {
-      // 無視
+    } catch (err) {
+      reportFailure('live.error', { message: errorMessage(err) });
     }
     try {
       keepTab();
-    } catch {
-      // 無視
+    } catch (err) {
+      reportFailure('tab.error', { message: errorMessage(err) });
     }
   }, 5000);
 
@@ -544,8 +648,9 @@ function boot() {
     if (creds && creds.username && creds.password) {
       try {
         fillOnly(creds);
-      } catch {
-        // 画面構造が想定と違っても落とさない
+      } catch (err) {
+        // 画面構造が想定と違っても落とさない。入力値は送らない
+        reportFailure('autofill.error', { message: errorMessage(err) });
       }
     }
   });

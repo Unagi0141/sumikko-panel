@@ -164,6 +164,10 @@ process.on('unhandledRejection', (reason) => {
   recordError('unhandledRejection', reason);
 });
 
+// ページ側（カラムのプリロード・画像の表示窓）の失敗も同じ error.log に残す。
+// 何を・何回まで書くかの決まりは page-failure.js に置く。
+const recordPageFailure = require('./page-failure').createPageFailureRecorder(recordError);
+
 const win32 = new Win32Bridge();
 let appbarActive = false;
 let fullscreenPoll = null;
@@ -643,7 +647,9 @@ function createWindow() {
   win.contentView.addChildView(chromeView); // 最初に追加＝カラムより下のレイヤー
   fitChrome();
 
-  columns = new ColumnManager(win, chromeWebContents);
+  columns = new ColumnManager(win, chromeWebContents, (stage, detail, col) =>
+    recordPageFailure('column:' + ((col && col.service) || 'unknown'), stage, detail)
+  );
 
   // UI 側のエラーはそのままでは見えないので、メインプロセスのログへ流す。
   chromeView.webContents.on('console-message', (event) => {
@@ -1023,13 +1029,24 @@ function openImageViewer(sender, sources, post) {
   const list = (Array.isArray(sources) ? sources : [sources])
     .filter((u) => typeof u === 'string')
     .filter((u) => /^https:\/\//.test(u) || /^data:image\//.test(u));
-  if (!list.length) return;
+  if (!list.length) {
+    // 押されたが、開ける URL が 1 つも無かった。スキームだけを残す（URL そのものは残さない）
+    const received = Array.isArray(sources) ? sources : [sources];
+    recordPageFailure('main', 'image.no-usable-source', {
+      received: received.length,
+      schemes: received.map((u) => (typeof u === 'string' ? u.split(':')[0].slice(0, 12) : typeof u)),
+    });
+    return;
+  }
 
   const permalink = typeof post === 'string' && /^https?:\/\//.test(post) ? post : null;
   imageContext = { sources: list, post: permalink };
 
   const found = columns.findByWebContents(sender);
-  if (!found) return;
+  if (!found) {
+    recordPageFailure('main', 'image.sender-not-a-column');
+    return;
+  }
 
   const display = activeDisplay();
   const b = display.bounds;
@@ -1069,6 +1086,14 @@ function openImageViewer(sender, sources, post) {
     imageWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     imageWin.webContents.on('will-navigate', (e) => e.preventDefault());
 
+    // 表示窓の中の失敗も error.log に残す（窓が出ない・中身が空、の手がかり）
+    imageWin.webContents.on('preload-error', (_e, _file, err) => {
+      recordPageFailure('image-view', 'preload-error', { message: (err && err.message) || String(err) });
+    });
+    imageWin.webContents.on('render-process-gone', (_e, details) => {
+      recordPageFailure('image-view', 'render-process-gone', { reason: details.reason, exitCode: details.exitCode });
+    });
+
     imageWin.loadFile(path.join(__dirname, '..', 'renderer', 'image-view.html')).then(() => {
       if (!imageWin || imageWin.isDestroyed()) return;
       imageWin.webContents.send('image:show', { sources: list, post: permalink });
@@ -1077,6 +1102,8 @@ function openImageViewer(sender, sources, post) {
       // 押し戻し、ドックが予約した分だけ画像が片側へ寄って見える。
       coverDisplay(display);
       imageWin.focus();
+    }).catch((err) => {
+      recordPageFailure('image-view', 'load-failed', { message: (err && err.message) || String(err) });
     });
     return;
   }
@@ -1192,6 +1219,19 @@ function registerIpc() {
   });
 
   ipcMain.on('image:close', () => closeImageWindow());
+
+  // ページ側で起きた失敗を error.log に残す。送り主を確かめ、決まり（page-failure.js）に通す。
+  ipcMain.on('col:diag', (e, payload) => {
+    const found = columns && columns.findByWebContents(e.sender);
+    if (!found) return; // カラム以外からは受け付けない
+    const { stage, detail } = payload || {};
+    recordPageFailure('column:' + found.col.service, stage, detail);
+  });
+  ipcMain.on('image:diag', (e, payload) => {
+    if (!imageWin || imageWin.isDestroyed() || e.sender !== imageWin.webContents) return;
+    const { stage, detail } = payload || {};
+    recordPageFailure('image-view', stage, detail);
+  });
 
   ipcMain.on('col:action', (_e, { id, action }) => {
     if (!columns) return;

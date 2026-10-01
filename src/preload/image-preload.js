@@ -9,4 +9,6 @@ contextBridge.exposeInMainWorld('viewer', {
   open: (url) => ipcRenderer.send('image:open', { url }),
   /** 表示する画像が差し替わったときに呼ばれる。 */
   onShow: (fn) => ipcRenderer.on('image:show', (_e, payload) => fn(payload)),
+  /** 開けなかったことを error.log に残す。送るのは段の名前と数だけ（URL は送らない）。 */
+  report: (stage, detail) => ipcRenderer.send('image:diag', { stage, detail: detail || null }),
 });

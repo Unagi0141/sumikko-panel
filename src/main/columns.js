@@ -44,10 +44,12 @@ class ColumnManager {
   /**
    * @param {import('electron').BaseWindow} win ドック本体のウインドウ
    * @param {() => import('electron').WebContents | null} getChrome UI 側へ状態を送るための関数
+   * @param {(stage: string, detail: object, col: object) => void} [onFailure] ページ側の失敗を記録する関数
    */
-  constructor(win, getChrome) {
+  constructor(win, getChrome, onFailure) {
     this.win = win;
     this.getChrome = getChrome;
+    this.onFailure = typeof onFailure === 'function' ? onFailure : () => {};
     this.views = new Map(); // id -> { view, col }
     this.stylesDir = path.join(app.getPath('userData'), 'styles');
     this.preparedSessions = new Set();
@@ -234,6 +236,11 @@ class ColumnManager {
     });
     wc.on('render-process-gone', (_e, details) => {
       this.status(col.id, { loading: false, error: '表示プロセスが停止しました (' + details.reason + ')' });
+      this.onFailure('render-process-gone', { reason: details.reason, exitCode: details.exitCode }, col);
+    });
+    // プリロードが読み込めなければ、新着検知も画像の拡大も黙って動かなくなる。
+    wc.on('preload-error', (_e, _file, err) => {
+      this.onFailure('preload-error', { message: (err && err.message) || String(err) }, col);
     });
 
     // リンククリックは同一サービス内ならその場で開き、外部サイトは既定のブラウザへ。
