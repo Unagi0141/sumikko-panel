@@ -447,11 +447,54 @@ function setupMediaExpand() {
 const TAB_MAX_TRIES = 5;
 let tabTries = 0;
 let tabPath = null;
-let tabDone = false;          // この画面では済んだ（切り替わった、または利用者が別のタブを選んだ）
-let tabClickedFrom;           // 最後に押したとき選ばれていた見出し（押していなければ undefined）
+let tabDone = false;          // この画面では済んだ（切り替え成立／打ち切り／利用者が選んだ）
+let tabSwitched = false;      // 私たちの切り替えが一度でも効いた。以後の別タブ選択は利用者の操作
+let tabWatchRoot = null;      // いま選択変化を見張っているタブ帯
+let tabWatcher = null;
 
 function tabLabel(el) {
   return el ? (el.innerText || el.getAttribute('aria-label') || '').trim() : '';
+}
+
+function isTabTarget(el, rule) {
+  const text = tabLabel(el);
+  if (!text || text.length > 40) return false;
+  return rule.labels.some((l) => text === l || text.includes(l));
+}
+
+// 目的のタブが選ばれた「瞬間」を取りこぼさないための見張り。
+//
+// 5 秒ごとのポーリングだけだと、私たちが切り替えた直後に利用者が元のタブへ戻した
+// 場合、ポーリングの隙間で「切り替わった」事実が見えないまま「選択＝元のタブ」しか
+// 観測できず、切り替え失敗と読み違えて押し戻してしまう（2026-09-16 判定 指摘1、
+// T6・T7。読み込み直後 1〜2 秒・画面移動後 最大 5 秒の窓）。
+// 選択属性の変化をその場で拾い、一度でも目的タブになったら tabSwitched を立てておく。
+function watchTabSelection(root, rule) {
+  if (!root || root === tabWatchRoot) return;
+  if (tabWatcher) tabWatcher.disconnect();
+  tabWatchRoot = root;
+  const selectedAttr = rule.selected || 'aria-selected';
+  const item = rule.item || '[role="tab"]';
+  tabWatcher = new MutationObserver(() => {
+    if (tabSwitched) return;
+    let items;
+    try {
+      items = root.querySelectorAll(item);
+    } catch {
+      return;
+    }
+    for (const el of items) {
+      if (el.getAttribute(selectedAttr) !== 'true') continue;
+      if (isTabTarget(el, rule)) tabSwitched = true;
+      break; // 選択は 1 つだけ
+    }
+  });
+  try {
+    tabWatcher.observe(root, { attributes: true, attributeFilter: [selectedAttr], subtree: true });
+  } catch {
+    tabWatcher = null;
+    tabWatchRoot = null;
+  }
 }
 
 function keepTab() {
@@ -463,7 +506,7 @@ function keepTab() {
     tabPath = location.pathname;
     tabTries = 0;
     tabDone = false;
-    tabClickedFrom = undefined;
+    tabSwitched = false;
   }
 
   // タイムライン以外（個別の投稿や設定画面）では触らない
@@ -492,26 +535,40 @@ function keepTab() {
   for (const el of items) {
     if (!visible(el)) continue;
     if (el.getAttribute(selectedAttr) === 'true') selected = el;
-    const text = (el.innerText || el.getAttribute('aria-label') || '').trim();
-    if (!text || text.length > 40) continue;
-    if (rule.labels.some((l) => text === l || text.includes(l))) target = el;
+    if (isTabTarget(el, rule)) target = el;
   }
 
   if (!target) return;          // まだ出ていない、または見出しが変わった
+
+  // このタブ帯の選択変化を見張る（私たちの切り替えが効いた瞬間を取りこぼさないため）
+  watchTabSelection(list, rule);
+
   if (target === selected) {    // 目的のタブになった。この画面ではもう触らない
     tabDone = true;
     return;
   }
-  // 押したあと、目的でない別のタブへ選択が移っていれば、利用者が選んだものとして尊重する
-  if (tabClickedFrom !== undefined && tabLabel(selected) !== tabClickedFrom) {
+
+  // 一度でも切り替えが効いていれば、目的でない選択は利用者が自分でしたもの。
+  // 同じページを開いている間は押し戻さない（2026-09-16 CEO 室裁定 十の3の1）。
+  if (tabSwitched) {
     tabDone = true;
     return;
   }
-  if (tabTries >= TAB_MAX_TRIES) return;
+
+  // ここまで来て目的タブが選ばれていないのは、まだ一度も切り替わっていないため。
+  // 押しても変わらない作りに変わっていた場合に叩き続けないよう、回数で打ち切る。
+  if (tabTries >= TAB_MAX_TRIES) {
+    tabDone = true;
+    return;
+  }
 
   tabTries += 1;
-  tabClickedFrom = tabLabel(selected);
   target.click();
+  // 同期で選択が変わる作りなら、この場で切り替え成立を確定する（見張りの取りこぼし対策）。
+  if (target.getAttribute(selectedAttr) === 'true') {
+    tabSwitched = true;
+    tabDone = true;
+  }
 }
 
 /* ------------------------------------------------------------------ *
